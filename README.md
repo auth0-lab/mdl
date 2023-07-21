@@ -1,6 +1,6 @@
 # MDOC
 
-Parse and and validate MDOC CBOR encoded binaries according to ISO 18013-5.
+Parse and validate MDOC CBOR encoded binaries according to ISO 18013-5.
 
 ## Usage
 
