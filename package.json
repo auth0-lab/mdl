@@ -1,0 +1,34 @@
+{
+  "name": "mdoc",
+  "version": "0.0.1",
+  "description": "Parse and and validate MDOC CBOR encoded binaries according to ISO 18013-5.",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "lint": "eslint ./src/**/*.ts",
+    "build": "tsc"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.4.2",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "eslint": "^8.45.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@peculiar/webcrypto": "^1.4.3",
+    "@peculiar/x509": "^1.9.3",
+    "cbor": "^9.0.0",
+    "compare-versions": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
