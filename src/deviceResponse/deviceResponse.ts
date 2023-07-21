@@ -3,11 +3,19 @@ import Tagged from 'cbor/types/lib/tagged';
 import CoseMac0 from '../cose/CoseMac0';
 import CoseSign1 from '../cose/CoseSign1';
 
+export const MDL_DOCTYPE = 'org.iso.18013.5.1.mDL';
+export const MDL_NAMESPACE = 'org.iso.18013.5.1';
+
 export type ValidityInfo = {
   signed: Date,
   validFrom: Date,
   validUntil: Date,
   expectedUpdate?: Date,
+};
+
+export type DSCertificate = {
+  countryName: string;
+  stateOrProvinceName?: string;
 };
 
 export type IssuerSignedItem = {
@@ -95,7 +103,8 @@ export type MobileDocument = {
 export type ParsedDeviceResponse = {
   issuer: {
     validityInfo: ValidityInfo,
-    nameSpaces: ValidatedIssuerNameSpaces
+    nameSpaces: ValidatedIssuerNameSpaces,
+    dsCertificate: DSCertificate,
   },
   device: {
     nameSpaces: DeviceNameSpaces

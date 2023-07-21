@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
 // eslint-disable-next-line import/no-unresolved
 import Tagged from 'cbor/types/lib/tagged';
-import { DeviceNameSpaces, MobileDocument, ValidatedIssuerNameSpaces } from './deviceResponse';
+import {
+  DSCertificate, DeviceNameSpaces, MDL_NAMESPACE, MobileDocument, ValidatedIssuerNameSpaces,
+} from './deviceResponse';
 import { cborDecode, cborEncode } from '../cose/cbor';
 import CoseSign1 from '../cose/CoseSign1';
 
@@ -34,7 +36,7 @@ const validateDigest = (
  *
  * @param mdoc
  */
-const verifyData = (mdoc: MobileDocument): {
+const verifyData = (mdoc: MobileDocument, dsCertificate: DSCertificate): {
   issuerNameSpaces: ValidatedIssuerNameSpaces, deviceNameSpaces: DeviceNameSpaces
 } => {
   const issuerAuth = mdoc.issuerSigned.issuerAuth as CoseSign1;
@@ -71,6 +73,23 @@ const verifyData = (mdoc: MobileDocument): {
       );
       issuerNameSpaces[ns][ev.elementIdentifier] = ev.elementValue;
     });
+
+    if (ns === MDL_NAMESPACE) {
+      // if the `issuing_country` was retrieved, verify that the value matches the `countryName`
+      // in the subject field within the DS certificate
+      if (issuerNameSpaces[ns].issuing_country
+        && issuerNameSpaces[ns].issuing_country !== dsCertificate.countryName) {
+        throw new Error(`The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${dsCertificate.countryName}) in the subject field within the DS certificate`);
+      }
+
+      // if the `issuing_jurisdiction` was retrieved, and `stateOrProvinceName` is
+      // present in the subject field within the DS certificate, they must have the same value
+      if (issuerNameSpaces[ns].issuing_jurisdiction
+        && dsCertificate.stateOrProvinceName
+        && issuerNameSpaces[ns].issuing_jurisdiction !== dsCertificate.stateOrProvinceName) {
+        throw new Error(`The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${dsCertificate.stateOrProvinceName}) in the subject field within the DS certificate`);
+      }
+    }
   });
 
   return { issuerNameSpaces, deviceNameSpaces: mdoc.deviceSigned.nameSpaces };

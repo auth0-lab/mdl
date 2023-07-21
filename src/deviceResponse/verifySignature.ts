@@ -9,7 +9,12 @@ import { extractX5Chain } from '../cose/header/headers';
 import HasX5chainValidator from '../validate/cose/HasX5chainValidator';
 import { CoseMacAlgorithm, CoseSignAlgorithm } from '../cose/algorithms';
 import { cborDecode, cborEncode } from '../cose/cbor';
-import { DeviceAuth, RawDeviceNameSpaces, ValidityInfo } from './deviceResponse';
+import {
+  DSCertificate,
+  DeviceAuth,
+  RawDeviceNameSpaces,
+  ValidityInfo,
+} from './deviceResponse';
 import coseKeyMapToBuffer from '../cose/coseKey';
 
 /*
@@ -17,7 +22,7 @@ import coseKeyMapToBuffer from '../cose/coseKey';
 *
 */
 export const verifyIssuerSignature = async (msg: CoseSign1):
-  Promise<{ validityInfo: ValidityInfo }> => {
+  Promise<{ validityInfo: ValidityInfo, dsCertificate: DSCertificate }> => {
   const validator = new ChainValidator([
     new KnownAlgorithmValidator([CoseSignAlgorithm.ECDS_256]),
     new HasX5chainValidator(),
@@ -49,17 +54,17 @@ export const verifyIssuerSignature = async (msg: CoseSign1):
   }
 
   if (validityInfo.validUntil < now) {
-    // TODO throw new Error(`The MSO was expired at ${validityInfo.validUntil}`);
+    throw new Error(`The MSO was expired at ${validityInfo.validUntil}`);
   }
 
-  // TODO
-  // If the mDL reader retrieved the “issuing_country” data element, it shall verify that the value
-  // of that element matches the countryName element in the subject field within the DS certificate.
-  // if the mDL reader retrieved the “issuing_jurisdiction” data element, it shall verify that the
-  // value of that element matches the stateOrProvinceName element in the subject field within the
-  // DS certificate.
-  // This is only required if the stateOrProvinceName element is present in the DS cert.
-  return { validityInfo };
+  // countryName is mandatory, stateOrProvinceName is optional
+  const stateOrProvinceName = issuerCert.issuerName.getField('ST')[0];
+  const countryName = issuerCert.issuerName.getField('C')[0];
+  if (!countryName) {
+    throw new Error('Country name (C) not found in the issuer certificate\'s subject distinguished name.');
+  }
+
+  return { validityInfo, dsCertificate: { countryName, stateOrProvinceName } };
 };
 
 const calculateEphemeralMacKey = (

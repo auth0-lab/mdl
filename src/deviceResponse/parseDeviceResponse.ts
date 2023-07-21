@@ -115,7 +115,7 @@ const parseDeviceResponse = async (
   // TODO: support multiple docs
   const { issuerAuth } = mdoc[0].issuerSigned;
   const { deviceKey } = issuerAuth.getDecodedPayload().deviceKeyInfo;
-  const { validityInfo } = await verifyIssuerSignature(issuerAuth as CoseSign1);
+  const { validityInfo, dsCertificate } = await verifyIssuerSignature(issuerAuth as CoseSign1);
   await verifyDeviceSignature(mdoc[0].deviceSigned.deviceAuth as DeviceAuth, {
     deviceKeyCoseKey: deviceKey as Map<number, Buffer | number>,
     ephemeralPrivateKey: options.ephemeralPrivateKey,
@@ -124,10 +124,10 @@ const parseDeviceResponse = async (
     nameSpaces: mdoc[0].raw.deviceSigned.nameSpaces,
   });
 
-  const { issuerNameSpaces, deviceNameSpaces } = verifyData(mdoc[0]);
+  const { issuerNameSpaces, deviceNameSpaces } = verifyData(mdoc[0], dsCertificate);
 
   return {
-    issuer: { validityInfo, nameSpaces: issuerNameSpaces },
+    issuer: { validityInfo, nameSpaces: issuerNameSpaces, dsCertificate },
     device: { nameSpaces: deviceNameSpaces },
   };
 };
