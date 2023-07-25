@@ -1,11 +1,24 @@
-# MDOC
+# mDL
 
-Parse and validate MDOC CBOR encoded binaries according to ISO 18013-5.
+[ISO 18013-5](https://www.iso.org/standard/69084.html) defines mDL (mobile Driver Licenses): an ISO standard for digital driver licenses. 
+
+This is a Node.js library to validate mDL [CBOR encoded](https://cbor.io/) documents.
+
+## Installation
+Using `npm`
+```bash
+npm i @auth0/mdl
+```
+
+Using `yarn`
+```bash
+yarn install @auth0/mdl
+```
 
 ## Usage
 
 ```javascript
-import { parseDeviceResponse } from "mdoc";
+import { parseDeviceResponse } from "@auth0/mdl";
 import { inspect } from "node:util";
 
 (async () => {
