@@ -6,7 +6,8 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "lint": "eslint ./src/**/*.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "postinstall": "npm run build"
   },
   "files": [
     "lib/**/*"
