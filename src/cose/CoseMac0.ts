@@ -1,13 +1,13 @@
 import crypto from 'node:crypto';
-import { CoseMacAlgorithm } from './algorithms';
 import { cborEncode } from './cbor';
 import {
   CosePayload,
   CoseProtectedHeaders,
   CoseTag,
   CoseUnprotectedHeaders,
+  Header,
+  CoseMacAlgorithm,
 } from './cose';
-import Header from './header';
 
 /**
  * A COSE_Mac0 structure (https://datatracker.ietf.org/doc/html/rfc8152#section-6.2)

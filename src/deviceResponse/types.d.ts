@@ -3,9 +3,6 @@ import Tagged from 'cbor/types/lib/tagged';
 import CoseMac0 from '../cose/CoseMac0';
 import CoseSign1 from '../cose/CoseSign1';
 
-export const MDL_DOCTYPE = 'org.iso.18013.5.1.mDL';
-export const MDL_NAMESPACE = 'org.iso.18013.5.1';
-
 export type ValidityInfo = {
   signed: Date,
   validFrom: Date,
@@ -35,8 +32,10 @@ export type ValidatedIssuerNameSpaces = {
   };
 };
 
+export type IssuerAuth = CoseSign1;
+
 export type IssuerSigned = {
-  issuerAuth: CoseSign1;
+  issuerAuth: IssuerAuth;
   nameSpaces: IssuerNameSpaces;
 };
 
