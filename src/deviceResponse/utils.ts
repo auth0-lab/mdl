@@ -3,23 +3,13 @@ import crypto from 'node:crypto';
 import { cborEncode, cborDecode } from '../cose/cbor';
 import { RawDeviceNameSpaces } from './types.d';
 
-export const validateDigest = (
+export const calculateDigest = (
   alg: string,
-  digest: Buffer,
   elementValueToEvaluate: Tagged,
-  namespace: string,
-  elementIdentifier: string,
-) => {
-  const expectedDigest = crypto
-    .createHash(alg)
-    .update(cborEncode(elementValueToEvaluate))
-    .digest();
-  if (digest.compare(expectedDigest) !== 0) {
-    throw new Error(
-      `Invalid digest for element ${namespace}/${elementIdentifier}`,
-    );
-  }
-};
+) => crypto
+  .createHash(alg)
+  .update(cborEncode(elementValueToEvaluate))
+  .digest();
 
 export const calculateEphemeralMacKey = (
   deviceKey: Buffer,

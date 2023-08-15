@@ -7,6 +7,13 @@ import {
   CoseSignature,
   CoseUnprotectedHeaders,
 } from './cose';
+import { extractAlgorithm } from './headers';
+
+const COSE_ALGS = new Map<number, { name: string, hash: string, curve: string }>([
+  [-7, { name: 'ECDSA', hash: 'sha-256', curve: 'P-256' }], // ES256
+  [-35, { name: 'ECDSA', hash: 'sha-384', curve: 'P-384' }], // ES384
+  [-36, { name: 'ECDSA', hash: 'sha-512', curve: 'P-521' }], // ES512
+]);
 
 /**
  * A COSE_Sign1 structure (https://datatracker.ietf.org/doc/html/rfc8152#section-4.2)
@@ -80,17 +87,23 @@ export default class CoseSign1 {
       this.payload.length > 0 ? this.payload : detachedContent,
     ]);
 
+    const algNumber = extractAlgorithm(this);
+    const algInfo = COSE_ALGS.get(algNumber);
+    if (!algInfo) {
+      throw new Error(`Unsupported COSE alg: ${algNumber}`);
+    }
+
     const crypto = new Crypto();
     const pk = await crypto.subtle.importKey(
       'spki',
       publicKey,
-      { name: 'ECDSA', namedCurve: 'P-256' },
+      { name: algInfo.name, namedCurve: algInfo.curve },
       true,
       ['verify'],
     );
 
     return crypto.subtle.verify(
-      { name: 'ECDSA', hash: 'sha-256' },
+      { name: algInfo.name, hash: algInfo.hash },
       pk,
       this.getSignature(),
       ToBeSigned,

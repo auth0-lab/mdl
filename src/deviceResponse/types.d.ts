@@ -3,6 +3,13 @@ import Tagged from 'cbor/types/lib/tagged';
 import CoseMac0 from '../cose/CoseMac0';
 import CoseSign1 from '../cose/CoseSign1';
 
+export type VerificationSummaryElement = {
+  level: 'error' | 'warn' | 'info',
+  msg: string,
+};
+
+export type VerificationSummary = Array<VerificationSummaryElement>;
+
 export type ValidityInfo = {
   signed: Date,
   validFrom: Date,
@@ -100,12 +107,13 @@ export type MobileDocument = {
 };
 
 export type ParsedDeviceResponse = {
-  issuer: {
-    validityInfo: ValidityInfo,
-    nameSpaces: ValidatedIssuerNameSpaces,
-    dsCertificate: DSCertificate,
+  issuer?: {
+    validityInfo?: ValidityInfo,
+    nameSpaces?: ValidatedIssuerNameSpaces,
+    dsCertificate?: DSCertificate,
   },
-  device: {
+  device?: {
     nameSpaces: DeviceNameSpaces
-  }
+  },
+  isValid: boolean
 };

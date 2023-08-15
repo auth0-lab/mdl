@@ -1,6 +1,7 @@
 import { CoseProtectedHeaders, Header } from './cose';
 import { cborDecode } from './cbor';
 import CoseSign1 from './CoseSign1';
+import CoseMac0 from './CoseMac0';
 
 const headerFromMap = (
   map: Map<number, unknown>,
@@ -32,7 +33,7 @@ const headerFromProtectedHeaders = (
  * @param msg
  */
 export const extractAlgorithm = (
-  msg: CoseSign1,
+  msg: CoseSign1 | CoseMac0,
 ): number => {
   const alg = headerFromProtectedHeaders(msg.getProtectedHeaders(), Header.algorithm);
 

@@ -8,6 +8,7 @@ import {
   Header,
   CoseMacAlgorithm,
 } from './cose';
+import { extractAlgorithm } from './headers';
 
 /**
  * A COSE_Mac0 structure (https://datatracker.ietf.org/doc/html/rfc8152#section-6.2)
@@ -92,5 +93,10 @@ export default class CoseMac0 {
 
   setTag(tag: CoseTag) {
     this.tag = tag;
+  }
+
+  hasSupportedAlg() {
+    const algNumber = extractAlgorithm(this);
+    return algNumber === CoseMacAlgorithm.HMAC_256_256;
   }
 }
