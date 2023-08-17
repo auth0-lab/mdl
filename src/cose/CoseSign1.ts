@@ -84,7 +84,7 @@ export default class CoseSign1 {
       'Signature1',
       this.protectedHeaders,
       Buffer.alloc(0),
-      this.payload.length > 0 ? this.payload : detachedContent,
+      this.payload && this.payload.length > 0 ? this.payload : detachedContent,
     ]);
 
     const algNumber = extractAlgorithm(this);

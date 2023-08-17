@@ -340,7 +340,7 @@ export default class DeviceResponseVerifier {
     }
 
     if (!deviceResponse.version) {
-      this.summary.push({ level: 'error', msg: 'Device response doesn\'t contain the \'version\' element.' });
+      this.summary.push({ level: 'error', msg: 'Device response doesn\'t contain the \'version\' element' });
     }
 
     if (compareVersions(deviceResponse.version, '1.0') < 0) {
@@ -350,9 +350,9 @@ export default class DeviceResponseVerifier {
     }
 
     if (!deviceResponse.documents || deviceResponse.documents.length === 0) {
-      this.summary.push({ level: 'error', msg: 'Device response is invalid since it doesn\'t contain \'documents\' elements.' });
+      this.summary.push({ level: 'error', msg: 'Device response is invalid since it doesn\'t contain \'documents\' elements' });
     } else {
-      this.summary.push({ level: 'info', msg: 'Device response contains at least one \'document\' element.' });
+      this.summary.push({ level: 'info', msg: 'Device response contains at least one \'document\' element' });
     }
 
     const mdoc = deviceResponse.documents.map((doc: RawMobileDocument) => ({
