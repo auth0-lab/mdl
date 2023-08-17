@@ -18,7 +18,7 @@ yarn install @auth0/mdl
 ## Usage
 
 ```javascript
-import { parseDeviceResponse } from "@auth0/mdl";
+import { DeviceResponseVerifier } from "@auth0/mdl";
 import { inspect } from "node:util";
 
 (async () => {

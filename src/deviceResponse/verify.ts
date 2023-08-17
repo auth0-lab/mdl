@@ -4,7 +4,7 @@ import { X509Certificate } from '@peculiar/x509';
 import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
 import { cborDecode } from '../cose/cbor';
-import { extractAlgorithm, extractX5Chain } from '../cose/headers';
+import { extractX5Chain } from '../cose/headers';
 import coseKeyMapToBuffer from '../cose/coseKey';
 import {
   calculateDigest, calculateEphemeralMacKey, calculateDeviceAutenticationBytes,
@@ -381,12 +381,12 @@ export default class DeviceResponseVerifier {
       nameSpaces: mdoc[0].raw.deviceSigned.nameSpaces,
     });
 
-    const { issuerNameSpaces, deviceNameSpaces } = dsCertificate && this.verifyData(mdoc[0], dsCertificate);
+    const data = dsCertificate && this.verifyData(mdoc[0], dsCertificate);
 
     return {
       isValid: this.getIsValid(),
-      issuer: { nameSpaces: issuerNameSpaces, validityInfo, dsCertificate },
-      device: { nameSpaces: deviceNameSpaces },
+      issuer: { nameSpaces: data?.issuerNameSpaces, validityInfo, dsCertificate },
+      device: { nameSpaces: data?.deviceNameSpaces },
     };
   }
 }
