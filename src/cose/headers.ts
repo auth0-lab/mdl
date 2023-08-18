@@ -52,12 +52,20 @@ export const extractAlgorithm = (
  */
 export const extractX5Chain = (
   msg: CoseSign1,
-): string => {
+): string[] => {
+  // x5c MAY be followed by additional certificates, with each subsequent certificate being the one used to certify the previous one
   const x5chain = headerFromMap(msg.getUnprotectedHeaders(), Header.x5chain);
+  const certs = (Array.isArray(x5chain) ? x5chain : [x5chain]);
 
-  if (!Buffer.isBuffer(x5chain)) {
-    throw new Error('x5chain header is not a buffer');
+  if (certs.length < 1) {
+    throw new Error('The x5chain element is empty');
   }
 
-  return x5chain.toString('base64');
+  return certs.map((cert) => {
+    if (!Buffer.isBuffer(cert)) {
+      throw new Error('The x5chain element is malformed');
+    }
+
+    return cert.toString('base64');
+  });
 };

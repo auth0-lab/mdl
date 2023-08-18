@@ -18,8 +18,14 @@ export type ValidityInfo = {
 };
 
 export type DSCertificate = {
-  countryName: string;
-  stateOrProvinceName?: string;
+  validity: {
+    notBefore: Date,
+    notAfter: Date,
+  },
+  issuer: {
+    countryName: string;
+    stateOrProvinceName?: string;
+  }
 };
 
 export type IssuerSignedItem = {

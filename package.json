@@ -25,9 +25,10 @@
   },
   "dependencies": {
     "@peculiar/webcrypto": "^1.4.3",
-    "@peculiar/x509": "^1.9.3",
+    "@peculiar/x509": "^1.9.5",
     "cbor": "^9.0.0",
-    "compare-versions": "^6.0.0"
+    "compare-versions": "^6.0.0",
+    "pkijs": "^3.0.15"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,13 +1,15 @@
 import { Tagged } from 'cbor';
 import { compareVersions } from 'compare-versions';
-import { X509Certificate } from '@peculiar/x509';
 import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
 import { cborDecode } from '../cose/cbor';
 import { extractX5Chain } from '../cose/headers';
 import coseKeyMapToBuffer from '../cose/coseKey';
 import {
-  calculateDigest, calculateEphemeralMacKey, calculateDeviceAutenticationBytes,
+  calculateDigest,
+  calculateEphemeralMacKey,
+  calculateDeviceAutenticationBytes,
+  parseAndValidateCertificateChain,
 } from './utils';
 import {
   RawMobileDocument,
@@ -37,18 +39,22 @@ const DIGEST_ALGS = {
 } as { [key: string]: string };
 
 export default class DeviceResponseVerifier {
-  private readonly issuersCertificates: Buffer[];
+  private readonly issuersRootCertificates: string[];
 
   private summary: VerificationSummary;
 
-  constructor(/* issuersCertificates: Buffer[] */) {
-    // this.issuersCertificates = issuersCertificates;
+  /**
+   *
+   * @param issuersRootCertificates The IACA root certificates list of the supported issuers.
+   */
+  constructor(issuersRootCertificates: string[]) {
+    this.issuersRootCertificates = issuersRootCertificates;
     this.summary = [];
   }
 
   /* Getters and setters */
-  getIssuersCertificated(): Buffer[] {
-    return this.issuersCertificates;
+  getIssuersRootCertificates(): string[] {
+    return this.issuersRootCertificates;
   }
 
   getVerificationSummary(): VerificationSummary {
@@ -129,13 +135,16 @@ export default class DeviceResponseVerifier {
     // Confirm that the mdoc data is issued by the issuing authority
 
     try {
-      // Parse issuer certificate
-      // TODO: validate cert root authority
-      const rawIssuerCert = extractX5Chain(msg);
-      const issuerCert = new X509Certificate(rawIssuerCert);
+      // Parse and validate issuer certificate
+      const rawIssuerCertChain = extractX5Chain(msg);
+      const issuerCert = await parseAndValidateCertificateChain(rawIssuerCertChain, this.issuersRootCertificates);
+
+      this.summary.push({ level: 'info', msg: 'The certificate chain (x5c) is valid' });
+
+      // Verify signature
       const verificationResult = await msg.verify(issuerCert.publicKey.rawData);
       if (!verificationResult) {
-        this.summary.push({ level: 'error', msg: 'The issuerAuth signature is tempered' });
+        throw new Error('The signature is tempered');
       } else {
         this.summary.push({ level: 'info', msg: 'The issuerAuth signature is valid' });
       }
@@ -170,7 +179,13 @@ export default class DeviceResponseVerifier {
         this.summary.push({ level: 'info', msg: `The countryName and stateOrProvinceName taken from issuer certificate subject distinguished name are ${countryName} and ${stateOrProvinceName} respectively` });
       }
 
-      return { validityInfo, dsCertificate: { countryName, stateOrProvinceName } };
+      return {
+        validityInfo,
+        dsCertificate: {
+          issuer: { countryName, stateOrProvinceName },
+          validity: { notBefore: issuerCert.notBefore, notAfter: issuerCert.notAfter },
+        },
+      };
     } catch (err) {
       this.summary.push({ level: 'error', msg: `Unable to verify issuer signature: ${err.message}` });
       return { validityInfo: undefined, dsCertificate: undefined };
@@ -289,25 +304,25 @@ export default class DeviceResponseVerifier {
       if (ns === MDL_NAMESPACE) {
         // if the `issuing_country` was retrieved, verify that the value matches the `countryName` in the subject field within the DS certificate
         if (issuerNameSpaces[ns].issuing_country
-          && issuerNameSpaces[ns].issuing_country !== dsCertificate.countryName) {
-          this.summary.push({ level: 'error', msg: `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${dsCertificate.countryName}) in the subject field within the DS certificate` });
+          && issuerNameSpaces[ns].issuing_country !== dsCertificate.issuer.countryName) {
+          this.summary.push({ level: 'error', msg: `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${dsCertificate.issuer.countryName}) in the subject field within the DS certificate` });
         } else if (issuerNameSpaces[ns].issuing_country) {
-          this.summary.push({ level: 'info', msg: `The retrieved 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) matches the 'countryName' (${dsCertificate.countryName}) in the subject field within the DS certificate` });
+          this.summary.push({ level: 'info', msg: `The retrieved 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) matches the 'countryName' (${dsCertificate.issuer.countryName}) in the subject field within the DS certificate` });
         } else {
           this.summary.push({ level: 'info', msg: 'The \'issuing_country\' was not retrieved' });
         }
 
         // if the `issuing_jurisdiction` was retrieved, and `stateOrProvinceName` is present in the subject field within the DS certificate, they must have the same value
         if (issuerNameSpaces[ns].issuing_jurisdiction
-          && dsCertificate.stateOrProvinceName
-          && issuerNameSpaces[ns].issuing_jurisdiction !== dsCertificate.stateOrProvinceName) {
-          this.summary.push({ level: 'error', msg: `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${dsCertificate.stateOrProvinceName}) in the subject field within the DS certificate` });
-        } else if (issuerNameSpaces[ns].issuing_jurisdiction && !dsCertificate.stateOrProvinceName) {
+          && dsCertificate.issuer.stateOrProvinceName
+          && issuerNameSpaces[ns].issuing_jurisdiction !== dsCertificate.issuer.stateOrProvinceName) {
+          this.summary.push({ level: 'error', msg: `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${dsCertificate.issuer.stateOrProvinceName}) in the subject field within the DS certificate` });
+        } else if (issuerNameSpaces[ns].issuing_jurisdiction && !dsCertificate.issuer.stateOrProvinceName) {
           this.summary.push({ level: 'warn', msg: `The 'issuing_jurisdiction' was retrieved (${issuerNameSpaces[ns].issuing_jurisdiction}) but the 'stateOrProvinceName' is not present in the subject field within the DS certificate` });
         } else if (!issuerNameSpaces[ns].issuing_jurisdiction) {
           this.summary.push({ level: 'info', msg: 'The \'issuing_jurisdiction\' was not retrieved' });
         } else {
-          this.summary.push({ level: 'info', msg: `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) matches the 'stateOrProvinceName' (${dsCertificate.stateOrProvinceName}) in the subject field within the DS certificate` });
+          this.summary.push({ level: 'info', msg: `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) matches the 'stateOrProvinceName' (${dsCertificate.issuer.stateOrProvinceName}) in the subject field within the DS certificate` });
         }
       }
     });

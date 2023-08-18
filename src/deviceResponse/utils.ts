@@ -1,7 +1,13 @@
 import { Tagged } from 'cbor';
 import crypto from 'node:crypto';
+import { X509Certificate } from '@peculiar/x509';
+import { Crypto as WebCrypto } from '@peculiar/webcrypto';
+import * as pkijs from 'pkijs';
 import { cborEncode, cborDecode } from '../cose/cbor';
 import { RawDeviceNameSpaces } from './types.d';
+
+const name = 'webcrypto';
+pkijs.setEngine(name, new pkijs.CryptoEngine({ name, crypto: WebCrypto }));
 
 export const calculateDigest = (
   alg: string,
@@ -70,3 +76,25 @@ export const calculateDeviceAutenticationBytes = (
     ]),
   ),
 );
+
+const pemToCert = (cert: string): string => {
+  const pem = /-----BEGIN (\w*)-----([^-]*)-----END (\w*)-----/g.exec(cert.toString());
+  if (pem && pem.length > 0) {
+    return pem[2].replace(/[\n|\r\n]/g, '');
+  }
+  return '';
+};
+
+export const parseAndValidateCertificateChain = async (rawCertChain: string[], caCerts: string[]): Promise<X509Certificate> => {
+  const chainEngine = new pkijs.CertificateChainValidationEngine({
+    certs: rawCertChain.map((c) => pkijs.Certificate.fromBER(Buffer.from(c, 'base64'))),
+    trustedCerts: caCerts.map((c) => pkijs.Certificate.fromBER(Buffer.from(pemToCert(c), 'base64'))),
+  });
+
+  const chain = await chainEngine.verify();
+  if (!chain.result) {
+    throw new Error(`Invalid certificate chain: ${chain.resultMessage}`);
+  }
+
+  return new X509Certificate(rawCertChain[0]);
+};
