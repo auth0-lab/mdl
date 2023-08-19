@@ -4,7 +4,7 @@ import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
 import { cborDecode } from '../cose/cbor';
 import { extractX5Chain } from '../cose/headers';
-import coseKeyMapToBuffer from '../cose/coseKey';
+import { parseCoseKeyMapToBuffer, parseCoseKeyMapToJwk } from '../cose/coseKey';
 import {
   calculateDigest,
   calculateEphemeralMacKey,
@@ -208,7 +208,6 @@ export default class DeviceResponseVerifier {
       return;
     }
 
-    const deviceKey = coseKeyMapToBuffer(options.deviceKeyCoseKey);
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
       options.sessionTranscriptBytes,
       options.docType,
@@ -218,6 +217,7 @@ export default class DeviceResponseVerifier {
     if (deviceAuth.deviceSignature) {
       // ECDSA/EdDSA authentication
       try {
+        const deviceKey = parseCoseKeyMapToJwk(options.deviceKeyCoseKey);
         const verificationResult = await deviceAuth.deviceSignature.verify(deviceKey, deviceAuthenticationBytes);
         if (!verificationResult) {
           this.summary.push({ level: 'error', msg: 'The deviceAuth signature (ECDSA/EdDSA) is tempered' });
@@ -243,6 +243,7 @@ export default class DeviceResponseVerifier {
     }
 
     try {
+      const deviceKey = parseCoseKeyMapToBuffer(options.deviceKeyCoseKey);
       const ephemeralMacKey = calculateEphemeralMacKey(
         deviceKey,
         options.ephemeralPrivateKey,

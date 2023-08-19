@@ -78,7 +78,7 @@ export default class CoseSign1 {
     this.signature = signature;
   }
 
-  async verify(publicKey: ArrayBuffer, detachedContent?: Buffer) {
+  async verify(publicKey: ArrayBuffer | { x: string, y: string }, detachedContent?: Buffer) {
     // https://datatracker.ietf.org/doc/html/rfc8152#section-4.4
     const ToBeSigned = cborEncode([
       'Signature1',
@@ -94,13 +94,28 @@ export default class CoseSign1 {
     }
 
     const crypto = new Crypto();
-    const pk = await crypto.subtle.importKey(
-      'spki',
-      publicKey,
-      { name: algInfo.name, namedCurve: algInfo.curve },
-      true,
-      ['verify'],
-    );
+    const pk = await (publicKey instanceof ArrayBuffer
+      ? crypto.subtle.importKey(
+        'spki',
+        publicKey,
+        { name: algInfo.name, namedCurve: algInfo.curve },
+        true,
+        ['verify'],
+      )
+      : crypto.subtle.importKey(
+        'jwk',
+        {
+          crv: algInfo.curve,
+          ext: true,
+          key_ops: ['verify'],
+          kty: 'EC',
+          x: publicKey.x,
+          y: publicKey.y,
+        },
+        { name: algInfo.name, namedCurve: algInfo.curve },
+        false,
+        ['verify'],
+      ));
 
     return crypto.subtle.verify(
       { name: algInfo.name, hash: algInfo.hash },
