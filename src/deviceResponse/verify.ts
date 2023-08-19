@@ -262,7 +262,7 @@ export default class DeviceResponseVerifier {
         this.summary.push({ level: 'info', msg: 'The deviceAuth signature (MAC) is valid' });
       }
     } catch (err) {
-      this.summary.push({ level: 'error', msg: 'Unexpected error during device MAC computation' });
+      this.summary.push({ level: 'error', msg: `Unexpected error during device MAC computation: ${err.message}` });
     }
   }
 
