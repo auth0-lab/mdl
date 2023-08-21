@@ -78,13 +78,13 @@ export default class CoseSign1 {
     this.signature = signature;
   }
 
-  async verify(publicKey: ArrayBuffer | { x: string, y: string }, detachedContent?: Buffer) {
+  async verify(publicKey: ArrayBuffer, options: { publicKeyFormat: 'spki' | 'raw', detachedContent?: Buffer }) {
     // https://datatracker.ietf.org/doc/html/rfc8152#section-4.4
     const ToBeSigned = cborEncode([
       'Signature1',
       this.protectedHeaders,
       Buffer.alloc(0),
-      this.payload && this.payload.length > 0 ? this.payload : detachedContent,
+      this.payload && this.payload.length > 0 ? this.payload : options.detachedContent,
     ]);
 
     const algNumber = extractAlgorithm(this);
@@ -94,28 +94,13 @@ export default class CoseSign1 {
     }
 
     const crypto = new Crypto();
-    const pk = await (publicKey instanceof ArrayBuffer
-      ? crypto.subtle.importKey(
-        'spki',
-        publicKey,
-        { name: algInfo.name, namedCurve: algInfo.curve },
-        true,
-        ['verify'],
-      )
-      : crypto.subtle.importKey(
-        'jwk',
-        {
-          crv: algInfo.curve,
-          ext: true,
-          key_ops: ['verify'],
-          kty: 'EC',
-          x: publicKey.x,
-          y: publicKey.y,
-        },
-        { name: algInfo.name, namedCurve: algInfo.curve },
-        false,
-        ['verify'],
-      ));
+    const pk = await crypto.subtle.importKey(
+      options.publicKeyFormat,
+      publicKey,
+      { name: algInfo.name, namedCurve: algInfo.curve },
+      true,
+      ['verify'],
+    );
 
     return crypto.subtle.verify(
       { name: algInfo.name, hash: algInfo.hash },
