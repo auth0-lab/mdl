@@ -6,8 +6,8 @@ import * as pkijs from 'pkijs';
 import { cborEncode, cborDecode } from '../cose/cbor';
 import { RawDeviceNameSpaces } from './types.d';
 
-const name = 'webcrypto';
-pkijs.setEngine(name, new pkijs.CryptoEngine({ name, crypto: WebCrypto }));
+const webcrypto = new WebCrypto();
+pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle: webcrypto.subtle }));
 
 export const calculateDigest = (
   alg: string,
