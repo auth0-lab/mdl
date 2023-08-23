@@ -105,7 +105,7 @@ export default class DeviceResponseVerifier {
     const nameSpaces: IssuerNameSpaces = {};
 
     Object.keys(rawIssuerNameSpaces).forEach((ns) => {
-      nameSpaces[ns] = rawIssuerNameSpaces[ns].map(
+      nameSpaces[ns] = (rawIssuerNameSpaces[ns] || []).map(
         (t) => cborDecode(t.value) as IssuerSignedItem,
       );
     });
@@ -367,9 +367,10 @@ export default class DeviceResponseVerifier {
 
     if (!deviceResponse.documents || deviceResponse.documents.length === 0) {
       this.summary.push({ level: 'error', msg: 'Device response is invalid since it doesn\'t contain \'documents\' elements' });
-    } else {
-      this.summary.push({ level: 'info', msg: 'Device response contains at least one \'document\' element' });
+      return { isValid: false };
     }
+
+    this.summary.push({ level: 'info', msg: 'Device response contains at least one \'document\' element' });
 
     const mdoc = deviceResponse.documents.map((doc: RawMobileDocument) => ({
       docType: doc.docType,
