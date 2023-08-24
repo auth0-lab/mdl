@@ -15,13 +15,10 @@ import { extractAlgorithm } from './headers';
  *
  */
 export default class CoseMac0 {
-  private protectedHeaders: CoseProtectedHeaders;
-
-  private unprotectedHeaders: CoseUnprotectedHeaders;
-
-  private payload: CosePayload;
-
-  private tag: CoseTag;
+  public readonly protectedHeaders: CoseProtectedHeaders;
+  public readonly unprotectedHeaders: CoseUnprotectedHeaders;
+  public readonly payload: CosePayload;
+  public readonly tag: CoseTag;
 
   constructor([
     protectedHeaders,
@@ -60,39 +57,6 @@ export default class CoseMac0 {
       payload.length > 0 ? payload : null,
       hmac,
     ]);
-  }
-
-  /* Getters and setters */
-  getUnprotectedHeaders(): CoseUnprotectedHeaders {
-    return this.unprotectedHeaders;
-  }
-
-  setUnprotectedHeaders(unprotectedHeaders: CoseUnprotectedHeaders) {
-    this.unprotectedHeaders = unprotectedHeaders;
-  }
-
-  getProtectedHeaders(): CoseProtectedHeaders {
-    return this.protectedHeaders;
-  }
-
-  setProtectedHeaders(protectedHeaders: CoseProtectedHeaders) {
-    this.protectedHeaders = protectedHeaders;
-  }
-
-  getPayload(): CosePayload {
-    return this.payload;
-  }
-
-  setPayload(payload: CosePayload) {
-    this.payload = payload;
-  }
-
-  getTag(): CoseTag {
-    return this.tag;
-  }
-
-  setTag(tag: CoseTag) {
-    this.tag = tag;
   }
 
   hasSupportedAlg() {

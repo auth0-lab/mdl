@@ -1,5 +1,4 @@
-// import { cborDecode } from "../cose/cbor";
-import { cborDecode } from "../cose/cbor2";
+import { cborDecode } from "../cose/cbor";
 import { compareVersions } from 'compare-versions';
 import { DeviceAuth, IssuerAuth, MobileDocument, RawDeviceAuth, RawIssuerAuth, RawMobileDocument } from "./types";
 import CoseSign1 from "../cose/CoseSign1";
@@ -71,6 +70,7 @@ export const parse = async (
       ...doc.issuerSigned,
       issuerAuth: parseIssuerAuthElement(doc.issuerSigned.issuerAuth, doc.docType),
     },
+    // @ts-ignore
     deviceSigned: doc.deviceSigned ? {
       ...doc.deviceSigned,
       deviceAuth: parseDeviceAuthElement(doc.deviceSigned.deviceAuth),

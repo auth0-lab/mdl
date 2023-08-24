@@ -8,6 +8,7 @@ import {
   CoseProtectedHeaders,
   CoseSignature,
   CoseUnprotectedHeaders,
+  Header,
 } from './cose';
 import { extractAlgorithm } from './headers';
 
@@ -22,13 +23,10 @@ const COSE_ALGS = new Map<number, { name: string, hash: string, curve: string }>
  *
  */
 export default class CoseSign1 {
-  private protectedHeaders: CoseProtectedHeaders;
-
-  private unprotectedHeaders: CoseUnprotectedHeaders;
-
-  private payload: CosePayload;
-
-  private signature: CoseSignature;
+  public readonly protectedHeaders: CoseProtectedHeaders;
+  public readonly unprotectedHeaders: CoseUnprotectedHeaders;
+  public readonly payload: CosePayload;
+  public readonly signature: CoseSignature;
 
   constructor([
     protectedHeaders,
@@ -42,42 +40,22 @@ export default class CoseSign1 {
     this.signature = signature as CoseSignature;
   }
 
-  /* Getters and setters */
-  getProtectedHeaders(): CoseProtectedHeaders {
-    return this.protectedHeaders;
-  }
-
-  setProtectedHeaders(protectedHeaders: CoseProtectedHeaders) {
-    this.protectedHeaders = protectedHeaders;
-  }
-
-  getUnprotectedHeaders(): CoseUnprotectedHeaders {
-    return this.unprotectedHeaders;
-  }
-
-  setUnprotectedHeaders(unprotectedHeaders: CoseUnprotectedHeaders) {
-    this.unprotectedHeaders = unprotectedHeaders;
-  }
-
-  getPayload(): CosePayload {
-    return this.payload;
-  }
-
-  setPayload(payload: CosePayload) {
-    this.payload = payload;
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getDecodedPayload(): any {
     return cborDecode(this.payload);
   }
 
-  getSignature(): CoseSignature {
-    return this.signature;
-  }
-
-  setSignature(signature: CoseSignature) {
-    this.signature = signature;
+  public get decodedProtectedHeaders(): Map<Header, Buffer | number | string> {
+    const decoded = cborDecode(this.protectedHeaders, { mapsAsObjects: false });
+    // @ts-ignore
+    return Array.from(decoded).reduce((acc, [key, value]) => {
+      if (key == Header.kid) {
+        value = new TextDecoder().decode(value);
+      }
+      // @ts-ignore
+      acc.set(key, value);
+      return acc;
+    }, new Map());
   }
 
   async verify(publicKey: ArrayBuffer | crypto.webcrypto.JsonWebKey, options: { publicKeyFormat: 'spki' | 'raw' | 'jwk', detachedContent?: Buffer }) {
@@ -89,14 +67,17 @@ export default class CoseSign1 {
       this.payload && this.payload.length > 0 ? this.payload : options.detachedContent,
     ]);
 
-    const algNumber = extractAlgorithm(this);
+    const algNumber = this.decodedProtectedHeaders.get(Header.algorithm) as number;
     const algInfo = COSE_ALGS.get(algNumber);
+
     if (!algInfo) {
-      throw new Error(`Unsupported COSE alg: ${algNumber}`);
+      throw new Error(`Unsupported COSE alg: ${algNumber} `);
     }
-    console.dir(publicKey);
+
     const crypto = new Crypto();
+
     const pk = await crypto.subtle.importKey(
+      // @ts-ignore
       options.publicKeyFormat,
       publicKey,
       { name: algInfo.name, namedCurve: algInfo.curve },
@@ -107,7 +88,7 @@ export default class CoseSign1 {
     return crypto.subtle.verify(
       { name: algInfo.name, hash: algInfo.hash },
       pk,
-      this.getSignature(),
+      this.signature,
       ToBeSigned,
     );
   }

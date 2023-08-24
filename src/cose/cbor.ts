@@ -1,17 +1,47 @@
-import { decode, encode } from 'cbor';
-// eslint-disable-next-line import/no-unresolved
-import { BufferLike } from 'cbor/types/lib/decoder';
+import {
+  addExtension,
+  Encoder,
+  Options
+} from 'cbor-x';
 
-const extraTags = {
-  // tag value 24 indicates that the content of the CBOR bstr
-  // following the tag is itself a CBOR data item
-  24: (value: Buffer) => decode(value, { tags: extraTags }),
-  1004: (dateString: string) => dateString,
+addExtension({
+  Class: Date,
+  tag: 1004,
+  encode: (instance: Date, encode) => {
+    const str = instance.toISOString().split('T')[0];
+    return encode(str);
+  },
+  decode: (val: any): Object => {
+    return new Date(val);
+  }
+});
+
+addExtension({
+  Class: Object,
+  tag: 24,
+  encode: (instance, encode) => {
+    return encode(instance);
+  },
+  decode: (val: any): Object => {
+    // return val instanceof Uint8Array ? decode(val) : val;
+    return encoder.decode(val);
+  }
+});
+
+const encoderDefaults: Options = {
+  tagUint8Array: false,
+  useRecords: false,
+  mapsAsObjects: true
 };
 
-export const cborDecode = (
-  input: BufferLike,
-  options: { skipExtraTags?: boolean } = {},
-): unknown => decode(input, options.skipExtraTags ? {} : { tags: extraTags });
+const encoder = new Encoder(encoderDefaults);
 
-export const cborEncode = (obj: unknown): Buffer => encode(obj);
+export const cborDecode = (
+  input: Buffer | Uint8Array,
+  options: Options = encoderDefaults
+): any => {
+  const encoder = new Encoder({ ...encoderDefaults, ...options });
+  return encoder.decode(input);
+};
+
+export const cborEncode = (obj: unknown): Buffer => encoder.encode(obj);
