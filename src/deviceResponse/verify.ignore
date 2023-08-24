@@ -29,7 +29,7 @@ import {
   ValidatedIssuerNameSpaces,
   ValidityInfo,
   VerificationSummary,
-} from './types.d';
+} from './types';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 const DIGEST_ALGS = {
@@ -38,7 +38,7 @@ const DIGEST_ALGS = {
   'SHA-512': 'sha512',
 } as { [key: string]: string };
 
-export default class DeviceResponseVerifier {
+export class DeviceResponseVerifier {
   private readonly issuersRootCertificates: string[];
 
   private summary: VerificationSummary;

@@ -2,12 +2,13 @@
   "env": {
     "browser": false,
     "commonjs": true,
-    "es6": true
+    "es6": true,
+    "jest/globals": true
   },
-  "extends":[
+  "extends": [
     "airbnb-base"
   ],
-  "globals":{
+  "globals": {
     "Atomics": "readonly",
     "SharedArrayBuffer": "readonly"
   },
@@ -16,7 +17,8 @@
     "ecmaVersion": 2018
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "jest"
   ],
   "rules": {
     "import/extensions": [
@@ -32,13 +34,20 @@
     "no-shadow": "off",
     "no-unused-vars": "off",
     "max-len": 0,
-    "@typescript-eslint/no-shadow": ["error"],
+    "@typescript-eslint/no-shadow": [
+      "error"
+    ],
     "@typescript-eslint/no-unused-vars": "error"
   },
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".ts",
+          ".tsx"
+        ]
       }
     }
   }

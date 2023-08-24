@@ -1,5 +1,7 @@
 import { Buffer } from 'buffer';
 import { Crypto } from '@peculiar/webcrypto';
+import crypto from 'crypto';
+
 import { cborDecode, cborEncode } from './cbor';
 import {
   CosePayload,
@@ -78,7 +80,7 @@ export default class CoseSign1 {
     this.signature = signature;
   }
 
-  async verify(publicKey: ArrayBuffer, options: { publicKeyFormat: 'spki' | 'raw', detachedContent?: Buffer }) {
+  async verify(publicKey: ArrayBuffer | crypto.webcrypto.JsonWebKey, options: { publicKeyFormat: 'spki' | 'raw' | 'jwk', detachedContent?: Buffer }) {
     // https://datatracker.ietf.org/doc/html/rfc8152#section-4.4
     const ToBeSigned = cborEncode([
       'Signature1',
@@ -92,7 +94,7 @@ export default class CoseSign1 {
     if (!algInfo) {
       throw new Error(`Unsupported COSE alg: ${algNumber}`);
     }
-
+    console.dir(publicKey);
     const crypto = new Crypto();
     const pk = await crypto.subtle.importKey(
       options.publicKeyFormat,

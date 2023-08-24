@@ -87,7 +87,7 @@ export type RawIssuerAuth = RawAuthElement;
 
 export type RawIssuerSigned = {
   issuerAuth: RawIssuerAuth;
-  nameSpaces: RawIssuerNameSpaces;
+  nameSpaces: IssuerNameSpaces;
 };
 
 export type RawDeviceAuth =
@@ -96,7 +96,7 @@ export type RawDeviceAuth =
 
 export type RawDeviceSigned = {
   deviceAuth: RawDeviceAuth;
-  nameSpaces: RawDeviceNameSpaces;
+  nameSpaces: DeviceNameSpaces;
 };
 
 export type RawMobileDocument = {
