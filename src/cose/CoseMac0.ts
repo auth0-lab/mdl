@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
-import { cborEncode } from './cbor';
+import crypto from 'crypto';
+import { cborEncode } from '../cbor';
 import {
   CosePayload,
   CoseProtectedHeaders,
@@ -9,19 +9,17 @@ import {
   CoseMacAlgorithm,
 } from './cose';
 import { extractAlgorithm } from './headers';
+import { hmacSHA256 } from '../deviceResponse/utils';
 
 /**
  * A COSE_Mac0 structure (https://datatracker.ietf.org/doc/html/rfc8152#section-6.2)
  *
  */
 export default class CoseMac0 {
-  private protectedHeaders: CoseProtectedHeaders;
-
-  private unprotectedHeaders: CoseUnprotectedHeaders;
-
-  private payload: CosePayload;
-
-  private tag: CoseTag;
+  public readonly protectedHeaders: CoseProtectedHeaders;
+  public readonly unprotectedHeaders: CoseUnprotectedHeaders;
+  public readonly payload: CosePayload;
+  public readonly tag: CoseTag;
 
   constructor([
     protectedHeaders,
@@ -36,13 +34,14 @@ export default class CoseMac0 {
   }
 
   static async generate(
-    key: Buffer,
+    key: Buffer | ArrayBuffer,
     payload: Buffer,
     detachedContent?: Buffer,
   ): Promise<CoseMac0> {
     const encodedProtectedHeaders = cborEncode(
       new Map([[Header.algorithm, CoseMacAlgorithm.HMAC_256_256]]),
     );
+
     const macStructure = [
       'MAC0', // context
       encodedProtectedHeaders, // protected
@@ -50,49 +49,14 @@ export default class CoseMac0 {
       payload.length > 0 ? payload : detachedContent, // payload
     ];
 
-    const hmac = crypto
-      .createHmac('SHA-256', key)
-      .update(cborEncode(macStructure))
-      .digest();
+    const hmac = Buffer.from(await hmacSHA256(key, cborEncode(macStructure)));
+
     return new CoseMac0([
       encodedProtectedHeaders,
       [],
       payload.length > 0 ? payload : null,
       hmac,
     ]);
-  }
-
-  /* Getters and setters */
-  getUnprotectedHeaders(): CoseUnprotectedHeaders {
-    return this.unprotectedHeaders;
-  }
-
-  setUnprotectedHeaders(unprotectedHeaders: CoseUnprotectedHeaders) {
-    this.unprotectedHeaders = unprotectedHeaders;
-  }
-
-  getProtectedHeaders(): CoseProtectedHeaders {
-    return this.protectedHeaders;
-  }
-
-  setProtectedHeaders(protectedHeaders: CoseProtectedHeaders) {
-    this.protectedHeaders = protectedHeaders;
-  }
-
-  getPayload(): CosePayload {
-    return this.payload;
-  }
-
-  setPayload(payload: CosePayload) {
-    this.payload = payload;
-  }
-
-  getTag(): CoseTag {
-    return this.tag;
-  }
-
-  setTag(tag: CoseTag) {
-    this.tag = tag;
   }
 
   hasSupportedAlg() {

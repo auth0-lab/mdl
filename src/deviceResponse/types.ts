@@ -1,14 +1,15 @@
 // eslint-disable-next-line import/no-unresolved
-import Tagged from 'cbor/types/lib/tagged';
 import CoseMac0 from '../cose/CoseMac0';
 import CoseSign1 from '../cose/CoseSign1';
+import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
 
-export type VerificationSummaryElement = {
-  level: 'error' | 'warn' | 'info',
-  msg: string,
+export type VerificationAssessment = {
+  status: 'PASSED' | 'FAILED' | 'WARNING',
+  check: string,
+  reason?: string,
 };
 
-export type VerificationSummary = Array<VerificationSummaryElement>;
+export type OnVerificationAssessmentCallback = (item: VerificationAssessment) => void;
 
 export type ValidityInfo = {
   signed: Date,
@@ -28,15 +29,8 @@ export type DSCertificate = {
   }
 };
 
-export type IssuerSignedItem = {
-  digestID: number;
-  random: Buffer;
-  elementIdentifier: string;
-  elementValue: unknown;
-};
-
-export type IssuerNameSpaces = {
-  [x: string]: Array<IssuerSignedItem>;
+export type NameSpaces = {
+  [x: string]: IssuerSignedItem[];
 };
 
 export type ValidatedIssuerNameSpaces = {
@@ -49,15 +43,11 @@ export type IssuerAuth = CoseSign1;
 
 export type IssuerSigned = {
   issuerAuth: IssuerAuth;
-  nameSpaces: IssuerNameSpaces;
+  nameSpaces: NameSpaces;
 };
 
 export type DeviceSignedItems = {
   [x: string]: unknown;
-};
-
-export type DeviceNameSpaces = {
-  [x: string]: DeviceSignedItems;
 };
 
 export type DeviceAuth =
@@ -66,16 +56,12 @@ export type DeviceAuth =
 
 export type DeviceSigned = {
   deviceAuth: DeviceAuth;
-  nameSpaces: DeviceNameSpaces;
+  nameSpaces: NameSpaces;
 };
 
-export type RawIssuerNameSpace = Array<Tagged>;
+export type RawIndexedDataItem = IssuerSignedDataItem[];
 
-export type RawIssuerNameSpaces = {
-  [key: string]: RawIssuerNameSpace;
-};
-
-export type RawDeviceNameSpaces = Tagged;
+export type RawNameSpaces = Map<string, RawIndexedDataItem>;
 
 type RawAuthElement = Array<Buffer | Map<number, Buffer>>;
 
@@ -83,16 +69,14 @@ export type RawIssuerAuth = RawAuthElement;
 
 export type RawIssuerSigned = {
   issuerAuth: RawIssuerAuth;
-  nameSpaces: RawIssuerNameSpaces;
+  nameSpaces: RawNameSpaces;
 };
 
-export type RawDeviceAuth =
-  | ({ deviceMac: RawAuthElement } & { deviceSignature?: never })
-  | ({ deviceMac?: never } & { deviceSignature: RawAuthElement });
+export type RawDeviceAuth = Map<'deviceMac' | 'deviceSignature', RawAuthElement>;
 
 export type RawDeviceSigned = {
   deviceAuth: RawDeviceAuth;
-  nameSpaces: RawDeviceNameSpaces;
+  nameSpaces: RawNameSpaces;
 };
 
 export type RawMobileDocument = {
@@ -103,19 +87,14 @@ export type RawMobileDocument = {
 
 export type MobileDocument = {
   docType: string;
-  raw: RawMobileDocument;
+  raw: Map<string, any>;
   issuerSigned: IssuerSigned;
   deviceSigned: DeviceSigned;
 };
 
-export type ParsedDeviceResponse = {
-  issuer?: {
-    validityInfo?: ValidityInfo,
-    nameSpaces?: ValidatedIssuerNameSpaces,
-    dsCertificate?: DSCertificate,
-  },
-  device?: {
-    nameSpaces: DeviceNameSpaces
-  },
-  isValid: boolean
+export type DeviceResponse = {
+  documents: MobileDocument[];
+  version: string;
+  status: number;
+  raw: Map<string, any>;
 };

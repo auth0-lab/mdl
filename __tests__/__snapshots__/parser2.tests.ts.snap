@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`parser parseDeviceResponse should decoded protected headers 1`] = `
+Map {
+  1 => -7,
+}
+`;
