@@ -152,7 +152,7 @@ export default class DeviceResponseVerifier {
       // Validity
       const { validityInfo } = msg.getDecodedPayload();
       const now = new Date();
-      if (validityInfo.signed < issuerCert.notBefore && validityInfo.signed > issuerCert.notAfter) {
+      if (validityInfo.signed < issuerCert.notBefore || validityInfo.signed > issuerCert.notAfter) {
         this.summary.push({ level: 'error', msg: `The MSO signed date (${validityInfo.signed.toUTCString()}) is not within the validity period of the certificate (${issuerCert.notBefore.toUTCString()} to ${issuerCert.notAfter.toUTCString()})` });
       } else {
         this.summary.push({ level: 'info', msg: `The MSO signed date (${validityInfo.signed.toUTCString()}) is within the validity period of the certificate (${issuerCert.notBefore.toUTCString()} to ${issuerCert.notAfter.toUTCString()})` });
