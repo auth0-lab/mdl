@@ -1,56 +1,69 @@
-import { Tagged } from 'cbor';
-import crypto from 'node:crypto';
+import { subtle } from 'uncrypto';
 import { X509Certificate } from '@peculiar/x509';
 import { Crypto as WebCrypto } from '@peculiar/webcrypto';
 import * as pkijs from 'pkijs';
+import { p256 } from '@noble/curves/p256';
 import { cborEncode, cborDecode } from '../cose/cbor';
-import { RawDeviceNameSpaces } from './types.d';
+import { NameSpaces } from './types';
+import { DataItem } from '../cose/DataItem';
 
 const webcrypto = new WebCrypto();
-pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle: webcrypto.subtle }));
 
-export const calculateDigest = (
-  alg: string,
-  elementValueToEvaluate: Tagged,
-) => crypto
-  .createHash(alg)
-  .update(cborEncode(elementValueToEvaluate))
-  .digest();
+pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle }));
 
-export const calculateEphemeralMacKey = (
-  deviceKey: Buffer,
-  ephemeralPrivateKey: Buffer,
-  sessionTranscriptBytes: Buffer,
-): Buffer => {
-  const ka = crypto.createECDH('prime256v1');
-  ka.setPrivateKey(ephemeralPrivateKey);
-  const sharedSecret = ka.computeSecret(deviceKey);
+export const hmacSHA256 = async (
+  key: ArrayBuffer,
+  data: ArrayBuffer,
+): Promise<ArrayBuffer> => {
+  const saltHMACKey = await subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify'],
+  );
+
+  const hmac = await subtle.sign('HMAC', saltHMACKey, data);
+
+  return hmac;
+};
+
+export const calculateEphemeralMacKey = async (
+  deviceKey: ArrayBuffer,
+  ephemeralPrivateKey: ArrayBuffer,
+  sessionTranscriptBytes: ArrayBuffer,
+): Promise<ArrayBuffer> => {
+  const sharedSecret = p256.getSharedSecret(
+    Buffer.from(ephemeralPrivateKey).toString('hex'),
+    Buffer.from(deviceKey).toString('hex'),
+    true,
+  ).slice(1);
+
   const info = Buffer.from('454d61634b6579', 'hex'); // 'EMacKey' in hex
-  const salt = crypto
-    .createHash('sha256')
-    .update(sessionTranscriptBytes)
-    .digest();
+  const salt = await subtle.digest('SHA-256', sessionTranscriptBytes);
+  const prk = await hmacSHA256(salt, sharedSecret);
 
-  const prk = crypto.createHmac('sha256', salt).update(sharedSecret).digest();
   const result = Buffer.alloc(32);
   let ctr = 1;
   let pos = 0;
-  const mac = crypto.createHmac('sha256', prk);
-  let digest = '';
+  let digest = Buffer.alloc(0);
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    mac.write(digest, 'binary');
-    mac.write(info, 'binary');
-    mac.write(String.fromCharCode(ctr), 'binary');
-    digest = mac.digest('binary');
-    const digestLength = Buffer.byteLength(digest, 'binary');
+    const data = Buffer.concat([
+      digest,
+      info,
+      Buffer.from(String.fromCharCode(ctr)),
+    ]);
+    // digest = Buffer.from(await subtle.sign('HMAC', prkHMACKey, data));
+    digest = Buffer.from(await hmacSHA256(prk, data));
+    const digestLength = digest.byteLength;
     if (pos + digestLength < 32) {
-      result.write(digest, pos, digestLength, 'binary');
+      result.set(digest, pos);
       pos += digestLength;
       ctr += 1;
     } else {
-      result.write(digest, pos, 32 - pos, 'binary');
+      result.set(digest.subarray(0, 32 - pos), pos);
       break;
     }
   }
@@ -61,22 +74,23 @@ export const calculateEphemeralMacKey = (
 export const calculateDeviceAutenticationBytes = (
   sessionTranscriptBytes: Buffer,
   docType: string,
-  nameSpaces: RawDeviceNameSpaces,
-): Buffer => cborEncode(
-  new Tagged(
-    24,
-    cborEncode([
-      'DeviceAuthentication',
-      cborDecode(
-        (cborDecode(sessionTranscriptBytes, { skipExtraTags: true }) as Tagged).value,
-        { skipExtraTags: true },
-      ),
-      docType,
-      nameSpaces,
-    ]),
-  ),
-);
+  nameSpaces: NameSpaces,
+): Buffer => {
+  const { data: decodedSessionTranscript } = cborDecode(sessionTranscriptBytes) as DataItem;
 
+  const encode = DataItem.fromData([
+    'DeviceAuthentication',
+    decodedSessionTranscript,
+    docType,
+    nameSpaces,
+  ]);
+
+  const result = cborEncode(encode);
+
+  return result;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const pemToCert = (cert: string): string => {
   const pem = /-----BEGIN (\w*)-----([^-]*)-----END (\w*)-----/g.exec(cert.toString());
   if (pem && pem.length > 0) {
@@ -86,12 +100,12 @@ const pemToCert = (cert: string): string => {
 };
 
 export const parseAndValidateCertificateChain = async (rawCertChain: string[], caCerts: string[]): Promise<X509Certificate> => {
-  const chainEngine = new pkijs.CertificateChainValidationEngine({
-    certs: rawCertChain.map((c) => pkijs.Certificate.fromBER(Buffer.from(c, 'base64'))),
-    trustedCerts: caCerts.map((c) => pkijs.Certificate.fromBER(Buffer.from(pemToCert(c), 'base64'))),
-  });
+  // const chainEngine = new pkijs.CertificateChainValidationEngine({
+  //   certs: rawCertChain.map((c) => pkijs.Certificate.fromBER(Buffer.from(c, 'base64'))),
+  //   trustedCerts: caCerts.map((c) => pkijs.Certificate.fromBER(Buffer.from(pemToCert(c), 'base64'))),
+  // });
 
-  const chain = await chainEngine.verify();
+  // const chain = await chainEngine.verify();
   // if (!chain.result) {
   //   throw new Error(`Invalid certificate chain: ${chain.resultMessage}`);
   // }

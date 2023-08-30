@@ -1,8 +1,16 @@
 import {
   addExtension,
   Encoder,
-  Options
+  Options,
 } from 'cbor-x';
+
+const encoderDefaults: Options = {
+  tagUint8Array: false,
+  useRecords: false,
+  mapsAsObjects: false,
+  // @ts-ignore
+  useTag259ForMaps: false,
+};
 
 addExtension({
   Class: Date,
@@ -13,35 +21,23 @@ addExtension({
   },
   decode: (val: any): Object => {
     return new Date(val);
-  }
-});
-
-addExtension({
-  Class: Object,
-  tag: 24,
-  encode: (instance, encode) => {
-    return encode(instance);
   },
-  decode: (val: any): Object => {
-    // return val instanceof Uint8Array ? decode(val) : val;
-    return encoder.decode(val);
-  }
 });
-
-const encoderDefaults: Options = {
-  tagUint8Array: false,
-  useRecords: false,
-  mapsAsObjects: true
-};
-
-const encoder = new Encoder(encoderDefaults);
 
 export const cborDecode = (
   input: Buffer | Uint8Array,
-  options: Options = encoderDefaults
+  options: Options = encoderDefaults,
 ): any => {
-  const encoder = new Encoder({ ...encoderDefaults, ...options });
-  return encoder.decode(input);
+  const params = { ...encoderDefaults, ...options };
+  const enc = new Encoder(params);
+  return enc.decode(input);
 };
 
-export const cborEncode = (obj: unknown): Buffer => encoder.encode(obj);
+export const cborEncode = (
+  obj: unknown,
+  options: Options = encoderDefaults,
+): Buffer => {
+  const params = { ...encoderDefaults, ...options };
+  const enc = new Encoder(params);
+  return enc.encode(obj);
+};

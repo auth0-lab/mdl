@@ -10,7 +10,6 @@ const headerFromMap = (
   if (!map.has(key)) {
     throw new Error(`Map doesn't have key ${key}`);
   }
-
   return map.get(key);
 };
 

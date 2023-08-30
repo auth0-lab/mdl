@@ -1,35 +1,27 @@
-import { Tagged } from 'cbor';
 import { compareVersions } from 'compare-versions';
 import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
-import { cborDecode } from '../cose/cbor';
 import { extractX5Chain } from '../cose/headers';
 import coseKeyMapToBuffer from '../cose/coseKey';
 import {
-  calculateDigest,
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
   parseAndValidateCertificateChain,
 } from './utils';
 import {
-  RawMobileDocument,
   RawIssuerAuth,
-  RawDeviceAuth,
-  RawIssuerNameSpaces,
-  IssuerNameSpaces,
-  IssuerSignedItem,
   IssuerAuth,
   DeviceAuth,
-  DeviceNameSpaces,
-  DeviceSignedItems,
-  RawDeviceNameSpaces,
   ParsedDeviceResponse,
   DSCertificate,
   MobileDocument,
   ValidatedIssuerNameSpaces,
   ValidityInfo,
   VerificationSummary,
+  NameSpaces,
+  DeviceResponse,
 } from './types';
+import { parse } from './parser';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 const DIGEST_ALGS = {
@@ -74,7 +66,7 @@ export class DeviceResponseVerifier {
     expectedDocType: string,
   ): IssuerAuth {
     const issuerAuth = new CoseSign1(rawIssuerAuth);
-    const { docType, version } = issuerAuth.getDecodedPayload();
+    const { docType, version } = issuerAuth.decodedPayload;
 
     if (docType !== expectedDocType) {
       this.summary.push({ level: 'error', msg: `The issuerAuth docType must be ${expectedDocType}` });
@@ -89,45 +81,6 @@ export class DeviceResponseVerifier {
     }
 
     return issuerAuth;
-  }
-
-  private parseDeviceAuthElement(rawDeviceAuth: RawDeviceAuth): DeviceAuth {
-    if (rawDeviceAuth.deviceSignature) {
-      this.summary.push({ level: 'info', msg: 'Using ECDSA/EdDSA for device authentication' });
-      return { deviceSignature: new CoseSign1(rawDeviceAuth.deviceSignature) };
-    }
-
-    this.summary.push({ level: 'info', msg: 'Using MAC for device authentication' });
-    return { deviceMac: new CoseMac0(rawDeviceAuth.deviceMac) };
-  }
-
-  private parseIssuerNameSpaces(rawIssuerNameSpaces: RawIssuerNameSpaces): IssuerNameSpaces {
-    const nameSpaces: IssuerNameSpaces = {};
-
-    Object.keys(rawIssuerNameSpaces).forEach((ns) => {
-      nameSpaces[ns] = rawIssuerNameSpaces[ns].map(
-        (t) => cborDecode(t.value) as IssuerSignedItem,
-      );
-    });
-
-    this.summary.push({ level: 'info', msg: 'Issuer namespaces were decoded' });
-    return nameSpaces;
-  }
-
-  private parseDeviceNameSpaces(rawDeviceNameSpaces: RawDeviceNameSpaces): DeviceNameSpaces {
-    const nameSpaces: DeviceNameSpaces = {};
-
-    if (rawDeviceNameSpaces instanceof Tagged) {
-      this.summary.push({ level: 'info', msg: 'Device namespaces are empty' });
-      return cborDecode(rawDeviceNameSpaces.value) as DeviceNameSpaces;
-    }
-
-    Object.keys(rawDeviceNameSpaces).forEach((ns) => {
-      nameSpaces[ns] = cborDecode(rawDeviceNameSpaces[ns].value) as DeviceSignedItems;
-    });
-
-    this.summary.push({ level: 'info', msg: 'Device namespaces were decoded' });
-    return nameSpaces;
   }
 
   private async verifyIssuerSignature(msg: IssuerAuth):
@@ -150,7 +103,7 @@ export class DeviceResponseVerifier {
       }
 
       // Validity
-      const { validityInfo } = msg.getDecodedPayload();
+      const { validityInfo } = msg.decodedPayload;
       const now = new Date();
       if (validityInfo.signed < issuerCert.notBefore && validityInfo.signed > issuerCert.notAfter) {
         this.summary.push({ level: 'error', msg: `The MSO signed date (${validityInfo.signed.toUTCString()}) is not within the validity period of the certificate (${issuerCert.notBefore.toUTCString()} to ${issuerCert.notAfter.toUTCString()})` });
@@ -199,7 +152,7 @@ export class DeviceResponseVerifier {
       ephemeralPrivateKey: Buffer;
       sessionTranscriptBytes: Buffer;
       docType: string;
-      nameSpaces: RawDeviceNameSpaces;
+      nameSpaces: NameSpaces;
     },
   ) {
     // Prevent cloning of the mdoc and mitigate man in the middle attacks
@@ -244,7 +197,7 @@ export class DeviceResponseVerifier {
 
     try {
       const deviceKey = coseKeyMapToBuffer(options.deviceKeyCoseKey);
-      const ephemeralMacKey = calculateEphemeralMacKey(
+      const ephemeralMacKey = await calculateEphemeralMacKey(
         deviceKey,
         options.ephemeralPrivateKey,
         options.sessionTranscriptBytes,
@@ -256,7 +209,7 @@ export class DeviceResponseVerifier {
         deviceAuthenticationBytes,
       );
 
-      if (expectedMac.getTag().compare(deviceAuth.deviceMac.getTag()) !== 0) {
+      if (expectedMac.tag.compare(deviceAuth.deviceMac.tag) !== 0) {
         this.summary.push({ level: 'error', msg: 'Device MAC mismatch' });
       } else {
         this.summary.push({ level: 'info', msg: 'The deviceAuth signature (MAC) is valid' });
@@ -266,24 +219,22 @@ export class DeviceResponseVerifier {
     }
   }
 
-  private verifyData(mdoc: MobileDocument, dsCertificate: DSCertificate): {
-    issuerNameSpaces: ValidatedIssuerNameSpaces, deviceNameSpaces: DeviceNameSpaces
-  } {
+  private async verifyData(mdoc: MobileDocument, dsCertificate: DSCertificate): Promise<{
+    issuerNameSpaces: ValidatedIssuerNameSpaces, deviceNameSpaces: NameSpaces
+  }> {
     // Confirm that the mdoc data has not changed since issuance
     const { issuerAuth } = mdoc.issuerSigned;
-    const { valueDigests, digestAlgorithm } = cborDecode(
-      issuerAuth.getPayload(),
-    ) as { valueDigests: { [x: string]: Map<number, Buffer> }, digestAlgorithm: string };
+    const { valueDigests, digestAlgorithm } = issuerAuth.decodedPayload;
 
     if (!digestAlgorithm || !DIGEST_ALGS[digestAlgorithm]) {
       this.summary.push({ level: 'error', msg: `Unsupported digests algorithm: ${digestAlgorithm}` });
     }
 
     const nameSpaces = mdoc.issuerSigned.nameSpaces || {};
-    const issuerNameSpaces = {} as ValidatedIssuerNameSpaces;
+    const issuerNameSpaces: ValidatedIssuerNameSpaces = {};
 
-    Object.keys(nameSpaces).forEach((ns) => {
-      const digests = valueDigests[ns];
+    await Promise.all(Object.keys(nameSpaces).map(async (ns) => {
+      const digests = valueDigests.get(ns);
       if (!digests) {
         this.summary.push({ level: 'error', msg: `Unable to find digests for namespace: ${ns}` });
         return;
@@ -291,16 +242,16 @@ export class DeviceResponseVerifier {
 
       issuerNameSpaces[ns] = {};
 
-      nameSpaces[ns].forEach((ev, i) => {
+      await Promise.all(nameSpaces[ns].map(async (ev) => {
         const digest = digests.get(ev.digestID);
-        const expectedDigest = calculateDigest(DIGEST_ALGS[digestAlgorithm], mdoc.raw.issuerSigned.nameSpaces[ns][i]);
-        if (digest.compare(expectedDigest) !== 0) {
+        const expectedDigest = await ev.calculateDigest(digestAlgorithm);
+        if (digest.compare(new Uint8Array(expectedDigest)) !== 0) {
           this.summary.push({ level: 'error', msg: `Invalid digest for ${ns}/${ev.elementIdentifier} element` });
         } else {
           this.summary.push({ level: 'info', msg: `Valid digest for ${ns}/${ev.elementIdentifier} element` });
           issuerNameSpaces[ns][ev.elementIdentifier] = ev.elementValue;
         }
-      });
+      }));
 
       if (ns === MDL_NAMESPACE) {
         // if the `issuing_country` was retrieved, verify that the value matches the `countryName` in the subject field within the DS certificate
@@ -326,7 +277,7 @@ export class DeviceResponseVerifier {
           this.summary.push({ level: 'info', msg: `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) matches the 'stateOrProvinceName' (${dsCertificate.issuer.stateOrProvinceName}) in the subject field within the DS certificate` });
         }
       }
-    });
+    }));
 
     return { issuerNameSpaces, deviceNameSpaces: mdoc.deviceSigned.nameSpaces };
   }
@@ -343,61 +294,31 @@ export class DeviceResponseVerifier {
     options: { encodedSessionTranscript: Buffer, ephemeralReaderKey?: Buffer },
   ): Promise<ParsedDeviceResponse> {
     this.summary = [];
-    let deviceResponse;
+    let dr: DeviceResponse;
 
     try {
-      deviceResponse = cborDecode(encodedDeviceResponse, { skipExtraTags: true }) as {
-        version: string,
-        documents: Array<unknown>
-      };
+      dr = await parse(encodedDeviceResponse);
     } catch (err) {
       this.summary.push({ level: 'error', msg: `Unable to decode device response: ${err.message}` });
       return { isValid: false };
     }
 
-    if (!deviceResponse.version) {
-      this.summary.push({ level: 'error', msg: 'Device response doesn\'t contain the \'version\' element' });
-    }
-
-    if (compareVersions(deviceResponse.version, '1.0') < 0) {
-      this.summary.push({ level: 'error', msg: `Device response has an unsupported version: ${deviceResponse.version} (expected: >= '1.0')` });
-    } else {
-      this.summary.push({ level: 'info', msg: `Device response version is valid: ${deviceResponse.version}` });
-    }
-
-    if (!deviceResponse.documents || deviceResponse.documents.length === 0) {
-      this.summary.push({ level: 'error', msg: 'Device response is invalid since it doesn\'t contain \'documents\' elements' });
-    } else {
-      this.summary.push({ level: 'info', msg: 'Device response contains at least one \'document\' element' });
-    }
-
-    const mdoc = deviceResponse.documents.map((doc: RawMobileDocument) => ({
-      docType: doc.docType,
-      raw: doc,
-      issuerSigned: {
-        issuerAuth: this.parseIssuerAuthElement(doc.issuerSigned.issuerAuth, doc.docType),
-        nameSpaces: this.parseIssuerNameSpaces(doc.issuerSigned.nameSpaces),
-      },
-      deviceSigned: {
-        deviceAuth: this.parseDeviceAuthElement(doc.deviceSigned.deviceAuth),
-        nameSpaces: this.parseDeviceNameSpaces(doc.deviceSigned.nameSpaces),
-      },
-    }));
-
     // TODO: support multiple docs
-    const { issuerAuth } = mdoc[0].issuerSigned;
-    const { deviceKey } = issuerAuth.getDecodedPayload().deviceKeyInfo;
+    const document = dr.documents[0];
+
+    const { issuerAuth } = document.issuerSigned;
+    const { deviceKey } = issuerAuth.decodedPayload.deviceKeyInfo;
     const { validityInfo, dsCertificate } = await this.verifyIssuerSignature(issuerAuth);
 
-    await this.verifyDeviceSignature(mdoc[0].deviceSigned.deviceAuth as DeviceAuth, {
-      deviceKeyCoseKey: deviceKey as Map<number, Buffer | number>,
+    await this.verifyDeviceSignature(document.deviceSigned.deviceAuth as DeviceAuth, {
+      deviceKeyCoseKey: deviceKey,
       ephemeralPrivateKey: options.ephemeralReaderKey,
       sessionTranscriptBytes: options.encodedSessionTranscript,
-      docType: mdoc[0].docType,
-      nameSpaces: mdoc[0].raw.deviceSigned.nameSpaces,
+      docType: document.docType,
+      nameSpaces: document.deviceSigned.nameSpaces,
     });
 
-    const data = dsCertificate && this.verifyData(mdoc[0], dsCertificate);
+    const data = dsCertificate && await this.verifyData(document, dsCertificate);
 
     return {
       isValid: this.getIsValid(),
