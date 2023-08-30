@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import util from 'util';
+
 import { cborEncode } from '../cose/cbor';
 import { DataItem } from '../cose/DataItem';
 
@@ -7,9 +9,11 @@ export type IssuerSignedDataItem = DataItem<Map<keyof IssuerSignedItem, unknown>
 
 export class IssuerSignedItem {
   private readonly dataItem: IssuerSignedDataItem;
+  [util.inspect.custom]: () => string;
 
   constructor(dataItem: IssuerSignedDataItem) {
     this.dataItem = dataItem;
+    this[util.inspect.custom] = (): string => util.inspect(this.dataItem.data);
   }
 
   private get decodedData() {

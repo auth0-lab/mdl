@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import util from 'util';
+
 import { parseDeviceResponse } from '../src';
 import { DeviceResponse } from '../src/deviceResponse/types';
 import { cborEncode } from '../src/cose/cbor';
