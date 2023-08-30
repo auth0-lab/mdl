@@ -1,5 +1,5 @@
 import { CoseProtectedHeaders, Header } from './cose';
-import { cborDecode } from './cbor';
+import { cborDecode } from '../cbor';
 import CoseSign1 from './CoseSign1';
 import CoseMac0 from './CoseMac0';
 

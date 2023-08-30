@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 import { addExtension } from 'cbor-x';
-import { cborDecode, cborEncode } from './cbor';
+import util from 'util';
+import { cborDecode, cborEncode } from '.';
 
 export type DataItemParams<T = any> = {
   data: T,
@@ -38,6 +39,7 @@ export class DataItem<T = any> {
         this.#buffer = cborEncode(this.#data);
       }
     }
+
     if ('buffer' in params) {
       this.#buffer = params.buffer;
     }

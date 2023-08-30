@@ -1,5 +1,5 @@
 import { compareVersions } from 'compare-versions';
-import { cborDecode } from '../cose/cbor';
+import { cborDecode } from '../cbor';
 import {
   DeviceAuth, DeviceResponse, IssuerAuth, NameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';

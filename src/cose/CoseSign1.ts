@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
-import { cborDecode, cborEncode } from './cbor';
+import { cborDecode, cborEncode } from '../cbor';
 import {
   CosePayload,
   CoseProtectedHeaders,
@@ -9,7 +9,7 @@ import {
   CoseUnprotectedHeaders,
   Header,
 } from './cose';
-import { DataItem } from './DataItem';
+import { DataItem } from '../cbor/DataItem';
 import { ValidityInfo } from '../deviceResponse/types';
 
 const COSE_ALGS = new Map<number, { name: string, hash: string, curve: string }>([

@@ -1,5 +1,4 @@
-import { DataItem } from '../src/cose/DataItem';
-import { cborDecode, cborEncode } from '../src/cose/cbor';
+import { cborDecode, cborEncode, DataItem } from '../src/cbor';
 
 describe('cbor', () => {
   it('should properly decode a nested map', () => {

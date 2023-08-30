@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { cborEncode } from './cbor';
+import { cborEncode } from '../cbor';
 import {
   CosePayload,
   CoseProtectedHeaders,

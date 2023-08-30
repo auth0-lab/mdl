@@ -3,9 +3,9 @@ import { X509Certificate } from '@peculiar/x509';
 import { Crypto as WebCrypto } from '@peculiar/webcrypto';
 import * as pkijs from 'pkijs';
 import { p256 } from '@noble/curves/p256';
-import { cborEncode, cborDecode } from '../cose/cbor';
+import { cborEncode, cborDecode } from '../cbor';
 import { NameSpaces } from './types';
-import { DataItem } from '../cose/DataItem';
+import { DataItem } from '../cbor/DataItem';
 
 const webcrypto = new WebCrypto();
 

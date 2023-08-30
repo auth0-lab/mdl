@@ -41,3 +41,5 @@ export const cborEncode = (
   const enc = new Encoder(params);
   return enc.encode(obj);
 };
+
+export { DataItem } from './DataItem';
