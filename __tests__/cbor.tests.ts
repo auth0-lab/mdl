@@ -1,7 +1,7 @@
 import { DataItem } from '../src/cose/DataItem';
 import { cborDecode, cborEncode } from '../src/cose/cbor';
 
-describe.skip('cbor', () => {
+describe('cbor', () => {
   it('should properly decode a nested map', () => {
     const encoded = 'd81855b9000163666f6fd8184bb90001636261726362617a';
     const decoded = cborDecode(Buffer.from(encoded, 'hex')) as DataItem<Map<string, DataItem<Map<string, string>>>>;

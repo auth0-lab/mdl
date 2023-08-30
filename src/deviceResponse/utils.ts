@@ -99,6 +99,7 @@ const pemToCert = (cert: string): string => {
   return '';
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const parseAndValidateCertificateChain = async (rawCertChain: string[], caCerts: string[]): Promise<X509Certificate> => {
   // const chainEngine = new pkijs.CertificateChainValidationEngine({
   //   certs: rawCertChain.map((c) => pkijs.Certificate.fromBER(Buffer.from(c, 'base64'))),

@@ -1,4 +1,3 @@
-import { inspect } from 'util';
 import { DeviceResponseVerifier } from '../src';
 
 describe('verifier', () => {
@@ -14,14 +13,10 @@ describe('verifier', () => {
         ephemeralReaderKey, encodedSessionTranscript,
       });
 
-      if (!isValid) {
-        console.error('Invalid Device Response:\n', verifier.getVerificationErrors());
-        return;
-      }
-
-      console.log('Authenticated Data from Issuer:\n', inspect(issuer, false, null, true));
-      console.log('Authenticated Data from Device:\n', inspect(device, false, null, true));
-      console.log('Verification Summary:\n', verifier.getVerificationSummary());
+      // this credential is expired
+      expect(isValid).toBeFalsy();
+      expect(issuer).toMatchSnapshot();
+      expect(device).toMatchSnapshot();
     });
   });
 });

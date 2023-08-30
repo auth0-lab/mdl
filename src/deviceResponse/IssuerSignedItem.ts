@@ -14,14 +14,9 @@ export class IssuerSignedItem {
 
   private get decodedData() {
     if (!this.dataItem.data.has('digestID')) {
-      throw new Error('why');
+      throw new Error('Invalid data item');
     }
     return this.dataItem.data;
-    // const r = this.dataItem.data.values().next().value;
-    // if (!(r instanceof Map)) {
-    //   throw new Error('not a map');
-    // }
-    // return r;
   }
 
   public get digestID(): number {
