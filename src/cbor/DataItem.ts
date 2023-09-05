@@ -1,6 +1,4 @@
-/* eslint-disable no-underscore-dangle */
 import { addExtension } from 'cbor-x';
-import util from 'util';
 import { cborDecode, cborEncode } from '.';
 
 export type DataItemParams<T = any> = {

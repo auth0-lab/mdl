@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "lib": [
-      "es2020"
+      "dom",
+      "dom.iterable",
+      "esnext"
     ],
     "module": "commonjs",
     "target": "es2020",

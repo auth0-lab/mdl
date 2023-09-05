@@ -1,6 +1,4 @@
-import crypto from 'crypto';
-import util from 'util';
-
+import { subtle } from 'uncrypto';
 import { cborEncode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
 
@@ -37,9 +35,9 @@ export class IssuerSignedItem {
     return this.decodedData.get('elementValue');
   }
 
-  public async calculateDigest(alg: crypto.webcrypto.AlgorithmIdentifier) {
+  public async calculateDigest(alg: Parameters<SubtleCrypto['digest']>[0]) {
     const bytes = cborEncode(this.dataItem);
-    const result = await crypto.subtle.digest(alg, bytes);
+    const result = await subtle.digest(alg, bytes);
     return result;
   }
 }
