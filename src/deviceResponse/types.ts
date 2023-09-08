@@ -3,12 +3,13 @@ import CoseMac0 from '../cose/CoseMac0';
 import CoseSign1 from '../cose/CoseSign1';
 import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
 
-export type VerificationSummaryElement = {
-  level: 'error' | 'warn' | 'info',
-  msg: string,
+export type VerificationAssessment = {
+  status: 'PASSED' | 'FAILED' | 'WARNING',
+  check: string,
+  reason?: string,
 };
 
-export type VerificationSummary = Array<VerificationSummaryElement>;
+export type OnVerificationAssessmentCallback = (item: VerificationAssessment) => void;
 
 export type ValidityInfo = {
   signed: Date,
@@ -91,21 +92,9 @@ export type MobileDocument = {
   deviceSigned: DeviceSigned;
 };
 
-export type ParsedDeviceResponse = {
-  issuer?: {
-    validityInfo?: ValidityInfo,
-    nameSpaces?: ValidatedIssuerNameSpaces,
-    dsCertificate?: DSCertificate,
-  },
-  device?: {
-    nameSpaces: NameSpaces
-  },
-  isValid: boolean
-};
-
 export type DeviceResponse = {
   documents: MobileDocument[];
   version: string;
   status: number;
   raw: Map<string, any>;
-}
+};

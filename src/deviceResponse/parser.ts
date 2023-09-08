@@ -6,14 +6,7 @@ import {
 import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
 import { IssuerSignedItem } from './IssuerSignedItem';
-
-export class MDLParseError extends Error {
-  constructor(message?: string) {
-    super(message);
-    this.name = new.target.name;
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
+import { MDLParseError } from './errors';
 
 const parseIssuerAuthElement = (
   rawIssuerAuth: RawIssuerAuth,
@@ -68,18 +61,6 @@ export const parse = async (
 
   const { version, documents, status } = Object.fromEntries(deviceResponse);
 
-  if (!version) {
-    throw new MDLParseError('Device response doesn\'t contain the \'version\' element');
-  }
-
-  if (compareVersions(version, '1.0') < 0) {
-    throw new MDLParseError(`Device response has an unsupported version: ${version} (expected: >= '1.0')`);
-  }
-
-  if (!documents || documents.length === 0) {
-    throw new MDLParseError('Device response is invalid since it doesn\'t contain \'documents\' elements');
-  }
-
   const parsedDocuments = documents.map((doc: Map<string, any>): MobileDocument => {
     return {
       raw: doc,
@@ -87,7 +68,10 @@ export const parse = async (
       issuerSigned: doc.has('issuerSigned') ? {
         ...doc.get('issuerSigned'),
         nameSpaces: unwrapNamespace(doc.get('issuerSigned').get('nameSpaces')),
-        issuerAuth: parseIssuerAuthElement(doc.get('issuerSigned').get('issuerAuth'), doc.get('docType')),
+        issuerAuth: parseIssuerAuthElement(
+          doc.get('issuerSigned').get('issuerAuth'),
+          doc.get('docType'),
+        ),
       } : undefined,
       // @ts-ignore
       deviceSigned: doc.has('deviceSigned') ? {
