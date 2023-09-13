@@ -75,11 +75,7 @@ export type RawIssuerNameSpaces = {
   [key: string]: RawIssuerNameSpace;
 };
 
-export type RawDeviceNameSpace = Tagged;
-
-export type RawDeviceNameSpaces = {
-  [key: string]: RawDeviceNameSpace;
-};
+export type RawDeviceNameSpaces = Tagged;
 
 type RawAuthElement = Array<Buffer | Map<number, Buffer>>;
 

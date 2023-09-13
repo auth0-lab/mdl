@@ -1,4 +1,3 @@
-import { Tagged } from 'cbor';
 import { compareVersions } from 'compare-versions';
 import CoseSign1 from '../cose/CoseSign1';
 import CoseMac0 from '../cose/CoseMac0';
@@ -21,7 +20,6 @@ import {
   IssuerAuth,
   DeviceAuth,
   DeviceNameSpaces,
-  DeviceSignedItems,
   RawDeviceNameSpaces,
   ParsedDeviceResponse,
   DSCertificate,
@@ -115,17 +113,7 @@ export default class DeviceResponseVerifier {
   }
 
   private parseDeviceNameSpaces(rawDeviceNameSpaces: RawDeviceNameSpaces): DeviceNameSpaces {
-    const nameSpaces: DeviceNameSpaces = {};
-
-    if (rawDeviceNameSpaces instanceof Tagged) {
-      this.summary.push({ level: 'info', msg: 'Device namespaces are empty' });
-      return cborDecode(rawDeviceNameSpaces.value) as DeviceNameSpaces;
-    }
-
-    Object.keys(rawDeviceNameSpaces).forEach((ns) => {
-      nameSpaces[ns] = cborDecode(rawDeviceNameSpaces[ns].value) as DeviceSignedItems;
-    });
-
+    const nameSpaces = cborDecode(rawDeviceNameSpaces.value) as DeviceNameSpaces;
     this.summary.push({ level: 'info', msg: 'Device namespaces were decoded' });
     return nameSpaces;
   }
