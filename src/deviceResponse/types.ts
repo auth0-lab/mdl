@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
-import CoseMac0 from '../cose/CoseMac0';
-import CoseSign1 from '../cose/CoseSign1';
+import { Mac0, Sign1 } from 'cose';
+import IssuerAuth from './IssuerAuth';
 import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
 
 export type VerificationAssessment = {
@@ -39,8 +39,6 @@ export type ValidatedIssuerNameSpaces = {
   };
 };
 
-export type IssuerAuth = CoseSign1;
-
 export type IssuerSigned = {
   issuerAuth: IssuerAuth;
   nameSpaces: NameSpaces;
@@ -51,8 +49,8 @@ export type DeviceSignedItems = {
 };
 
 export type DeviceAuth =
-  | ({ deviceMac: CoseMac0 } & { deviceSignature?: never })
-  | ({ deviceMac?: never } & { deviceSignature: CoseSign1 });
+  | { deviceMac: Mac0 } & { deviceSignature?: never }
+  | ({ deviceMac?: never } & { deviceSignature: Sign1 });
 
 export type DeviceSigned = {
   deviceAuth: DeviceAuth;
@@ -63,9 +61,9 @@ export type RawIndexedDataItem = IssuerSignedDataItem[];
 
 export type RawNameSpaces = Map<string, RawIndexedDataItem>;
 
-type RawAuthElement = Array<Buffer | Map<number, Buffer>>;
+type RawAuthElement = ConstructorParameters<typeof Sign1>;
 
-export type RawIssuerAuth = RawAuthElement;
+export type RawIssuerAuth = ConstructorParameters<typeof Sign1>;
 
 export type RawIssuerSigned = {
   issuerAuth: RawIssuerAuth;

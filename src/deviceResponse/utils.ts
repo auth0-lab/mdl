@@ -1,13 +1,12 @@
-import { subtle } from 'uncrypto';
-import { X509Certificate } from '@peculiar/x509';
-import { Crypto as WebCrypto } from '@peculiar/webcrypto';
 import * as pkijs from 'pkijs';
 import { p256 } from '@noble/curves/p256';
+import * as webcrypto from 'uncrypto';
+import { Buffer } from 'buffer';
 import { cborEncode, cborDecode } from '../cbor';
 import { NameSpaces } from './types';
 import { DataItem } from '../cbor/DataItem';
 
-const webcrypto = new WebCrypto();
+const { subtle } = webcrypto;
 
 pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle }));
 
@@ -29,10 +28,11 @@ export const hmacSHA256 = async (
 };
 
 export const calculateEphemeralMacKey = async (
-  deviceKey: ArrayBuffer,
-  ephemeralPrivateKey: ArrayBuffer,
-  sessionTranscriptBytes: ArrayBuffer,
-): Promise<ArrayBuffer> => {
+  deviceKey: Uint8Array,
+  ephemeralPrivateKey: Uint8Array,
+  sessionTranscriptBytes: Uint8Array,
+): Promise<Uint8Array> => {
+  // TODO: remove dependency with buffer
   const sharedSecret = p256.getSharedSecret(
     Buffer.from(ephemeralPrivateKey).toString('hex'),
     Buffer.from(deviceKey).toString('hex'),
@@ -97,19 +97,4 @@ const pemToCert = (cert: string): string => {
     return pem[2].replace(/[\n|\r\n]/g, '');
   }
   return '';
-};
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const parseAndValidateCertificateChain = async (rawCertChain: string[], caCerts: string[]): Promise<X509Certificate> => {
-  const chainEngine = new pkijs.CertificateChainValidationEngine({
-    certs: rawCertChain.map((c) => pkijs.Certificate.fromBER(Buffer.from(c, 'base64'))),
-    trustedCerts: caCerts.map((c) => pkijs.Certificate.fromBER(Buffer.from(pemToCert(c), 'base64'))),
-  });
-
-  const chain = await chainEngine.verify();
-  if (!chain.result) {
-    throw new Error(`Invalid certificate chain: ${chain.resultMessage}`);
-  }
-
-  return new X509Certificate(rawCertChain[0]);
 };
