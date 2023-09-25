@@ -2,12 +2,13 @@
   "env": {
     "browser": false,
     "commonjs": true,
-    "es6": true
+    "es6": true,
+    "jest/globals": true
   },
-  "extends":[
+  "extends": [
     "airbnb-base"
   ],
-  "globals":{
+  "globals": {
     "Atomics": "readonly",
     "SharedArrayBuffer": "readonly"
   },
@@ -16,9 +17,12 @@
     "ecmaVersion": 2018
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "jest"
   ],
   "rules": {
+    "no-await-in-loop": "off",
+    "no-restricted-syntax": "off",
     "import/extensions": [
       "error",
       "ignorePackages",
@@ -31,14 +35,39 @@
     ],
     "no-shadow": "off",
     "no-unused-vars": "off",
+    "arrow-body-style": "off",
+    "import/no-extraneous-dependencies": "off",
     "max-len": 0,
-    "@typescript-eslint/no-shadow": ["error"],
+    "@typescript-eslint/no-shadow": [
+      "error"
+    ],
+    "quotes": [
+      "error",
+      "single",
+      {
+        "avoidEscape": true
+      }
+    ],
+    "no-console": "off",
+    "import/prefer-default-export": "off",
+    "operator-linebreak": "off",
+    "lines-between-class-members": "off",
+    "no-useless-constructor": "off",
+    "no-empty-function": "off",
+    "max-classes-per-file": "off",
+    "class-methods-use-this": "off",
+    "object-curly-newline": "off",
     "@typescript-eslint/no-unused-vars": "error"
   },
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".ts",
+          ".tsx"
+        ]
       }
     }
   }
