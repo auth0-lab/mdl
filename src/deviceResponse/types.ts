@@ -3,14 +3,6 @@ import { Mac0, Sign1 } from 'cose';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
 
-export type VerificationAssessment = {
-  status: 'PASSED' | 'FAILED' | 'WARNING',
-  check: string,
-  reason?: string,
-};
-
-export type OnVerificationAssessmentCallback = (item: VerificationAssessment) => void;
-
 export type ValidityInfo = {
   signed: Date,
   validFrom: Date,

@@ -1,5 +1,4 @@
 import { compareVersions } from 'compare-versions';
-import debug from 'debug';
 import { X509Certificate } from '@peculiar/x509';
 import type { KeyLike } from 'jose';
 import { Mac0, Sign1, importDecodedCOSEKey } from 'cose';
@@ -18,14 +17,11 @@ import {
   ValidatedIssuerNameSpaces,
   NameSpaces,
   DeviceResponse,
-  OnVerificationAssessmentCallback,
 } from './types';
+import { UserDefinedVerificationCallback, buildCallback, onCatCheck } from './checkCallback';
 
 import { parse } from './parser';
-import { MDLError } from './errors';
 import IssuerAuth from './IssuerAuth';
-
-const log = debug('mdl');
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -42,8 +38,9 @@ export class DeviceResponseVerifier {
    */
   constructor(public readonly issuersRootCertificates: string[]) { }
 
-  private async verifyIssuerSignature(msg: IssuerAuth, onCheck: OnVerificationAssessmentCallback):
+  private async verifyIssuerSignature(msg: IssuerAuth, onCheckG: UserDefinedVerificationCallback):
     Promise<{ dsCertificate: DSCertificate }> {
+    const onCheck = onCatCheck(onCheckG, 'ISSUER_AUTH');
     let verificationKey: KeyLike;
     let issuerCert: X509Certificate;
 
@@ -108,19 +105,28 @@ export class DeviceResponseVerifier {
     deviceAuth: DeviceAuth,
     options: {
       deviceKeyCoseKey: Map<number, number | Uint8Array> | undefined;
-      ephemeralPrivateKey: Buffer;
-      sessionTranscriptBytes: Buffer;
+      ephemeralPrivateKey?: Buffer;
+      sessionTranscriptBytes?: Buffer;
       docType: string;
       nameSpaces: NameSpaces;
-      onCheck: OnVerificationAssessmentCallback;
+      onCheck: UserDefinedVerificationCallback;
     },
   ) {
-    const { onCheck } = options;
+    const onCheck = onCatCheck(options.onCheck, 'DEVICE_AUTH');
+
     // Prevent cloning of the mdoc and mitigate man in the middle attacks
     if (!deviceAuth.deviceMac && !deviceAuth.deviceSignature) {
       onCheck({
         status: 'FAILED',
         check: 'Device Auth must contain a deviceSignature or deviceMac element',
+      });
+      return;
+    }
+
+    if (!options.sessionTranscriptBytes) {
+      onCheck({
+        status: 'FAILED',
+        check: 'Session Transcript Bytes missing from options, aborting device signature check',
       });
       return;
     }
@@ -217,11 +223,12 @@ export class DeviceResponseVerifier {
   private async verifyData(
     mdoc: MobileDocument,
     dsCertificate: DSCertificate,
-    onCheck: OnVerificationAssessmentCallback,
+    onCheckG: UserDefinedVerificationCallback,
   ) {
     // Confirm that the mdoc data has not changed since issuance
     const { issuerAuth } = mdoc.issuerSigned;
     const { valueDigests, digestAlgorithm } = issuerAuth.decodedPayload;
+    const onCheck = onCatCheck(onCheckG, 'DATA_INTEGRITY');
 
     onCheck({
       status: digestAlgorithm && DIGEST_ALGS[digestAlgorithm] ? 'PASSED' : 'FAILED',
@@ -287,32 +294,31 @@ export class DeviceResponseVerifier {
   async verify(
     encodedDeviceResponse: Buffer,
     options: {
-      encodedSessionTranscript: Buffer,
+      encodedSessionTranscript?: Buffer,
       ephemeralReaderKey?: Buffer,
-      onCheck?: OnVerificationAssessmentCallback
-    },
+      onCheck?: UserDefinedVerificationCallback
+    } = {},
   ): Promise<DeviceResponse> {
-    const onCheck = options.onCheck || ((verification) => {
-      log(`Verification: ${verification.check} => ${verification.status}`);
-      if (verification.status !== 'FAILED') return;
-      throw new MDLError(verification.reason ?? verification.check);
-    });
+    const onCheck = buildCallback(options.onCheck);
 
     const dr = await parse(encodedDeviceResponse);
 
     onCheck({
       status: dr.version ? 'PASSED' : 'FAILED',
       check: 'Device Response must include "version" element.',
+      category: 'DOCUMENT_FORMAT',
     });
 
     onCheck({
       status: compareVersions(dr.version, '1.0') >= 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response version must be 1.0 or greater',
+      category: 'DOCUMENT_FORMAT',
     });
 
     onCheck({
       status: dr.documents && dr.documents.length > 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response must include at least one document.',
+      category: 'DOCUMENT_FORMAT',
     });
 
     for (const document of dr.documents) {

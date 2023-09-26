@@ -72,10 +72,10 @@ export const calculateEphemeralMacKey = async (
 };
 
 export const calculateDeviceAutenticationBytes = (
-  sessionTranscriptBytes: Buffer,
+  sessionTranscriptBytes: Uint8Array,
   docType: string,
   nameSpaces: NameSpaces,
-): Buffer => {
+): Uint8Array => {
   const { data: decodedSessionTranscript } = cborDecode(sessionTranscriptBytes) as DataItem;
 
   const encode = DataItem.fromData([
