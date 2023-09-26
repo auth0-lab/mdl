@@ -1,10 +1,12 @@
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
-import type { KeyLike } from 'jose';
-import { Mac0, Sign1, importDecodedCOSEKey } from 'cose';
+import type { JWK, KeyLike } from 'jose';
+import { Buffer } from 'buffer';
+import { COSEKeyToJWK, Mac0, Sign1, importDecodedCOSEKey } from 'cose';
+import crypto from 'uncrypto';
 import { areEqual } from '../buffer_utils';
-
 import coseKeyMapToBuffer from '../cose/coseKey';
+
 import {
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
@@ -17,8 +19,9 @@ import {
   ValidatedIssuerNameSpaces,
   NameSpaces,
   DeviceResponse,
+  DiagnosticInformation,
 } from './types';
-import { UserDefinedVerificationCallback, buildCallback, onCatCheck } from './checkCallback';
+import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
 
 import { parse } from './parser';
 import IssuerAuth from './IssuerAuth';
@@ -357,5 +360,80 @@ export class DeviceResponseVerifier {
     }
 
     return dr;
+  }
+
+  async getDiagnosticInformation(
+    encodedDeviceResponse: Buffer,
+    options: {
+      encodedSessionTranscript?: Buffer,
+      ephemeralReaderKey?: Buffer,
+    },
+  ): Promise<DiagnosticInformation> {
+    const dr: VerificationAssessment[] = [];
+    const decoded = await this.verify(
+      encodedDeviceResponse,
+      {
+        ...options,
+        onCheck: (check) => dr.push(check),
+      },
+    );
+
+    const document = decoded.documents[0];
+    const issuerCert = document?.issuerSigned.issuerAuth.x5chain &&
+      document.issuerSigned.issuerAuth.x5chain.length > 0 &&
+      new X509Certificate(document.issuerSigned.issuerAuth.x5chain[0]);
+
+    const attributes = Object.keys(document.issuerSigned.nameSpaces).map((ns) => {
+      const items = document.issuerSigned.nameSpaces[ns];
+      return items.map((item) => {
+        return { ns, id: item.elementIdentifier, value: item.elementValue };
+      });
+    }).flat();
+
+    let deviceKey: JWK;
+
+    if (document?.issuerSigned.issuerAuth) {
+      const { deviceKeyInfo } = document.issuerSigned.issuerAuth.decodedPayload;
+      if (deviceKeyInfo?.deviceKey) {
+        deviceKey = COSEKeyToJWK(deviceKeyInfo.deviceKey);
+      }
+    }
+
+    return {
+      common: {
+        version: decoded.version,
+        type: 'DeviceResponse',
+        status: decoded.status,
+        documents: decoded.documents.length,
+      },
+      issuer_certificate: issuerCert ? {
+        subjectName: issuerCert.subjectName.toString(),
+        pem: issuerCert.toString(),
+        notBefore: issuerCert.notBefore,
+        notAfter: issuerCert.notAfter,
+        serialNumber: issuerCert.serialNumber,
+        thumbprint: Buffer.from(await issuerCert.getThumbprint(crypto)).toString('hex'),
+      } : undefined,
+      issuer_signature: {
+        isValid: dr
+          .filter((check) => check.category === 'ISSUER_AUTH')
+          .every((check) => check.status === 'PASSED'),
+        reasons: dr
+          .filter((check) => check.category === 'ISSUER_AUTH' && check.status === 'FAILED')
+          .map((check) => check.reason),
+      },
+      device_key: {
+        jwk: deviceKey,
+      },
+      device_signature: {
+        isValid: dr
+          .filter((check) => check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY')
+          .every((check) => check.status === 'PASSED'),
+        reasons: dr
+          .filter((check) => (check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY') && check.status === 'FAILED')
+          .map((check) => check.reason),
+      },
+      attributes,
+    };
   }
 }

@@ -38,7 +38,7 @@
     "buffer": "^6.0.3",
     "cbor-x": "^1.5.4",
     "compare-versions": "^6.0.0",
-    "cose": "github:jfromaniello/cose",
+    "cose": "github:jfromaniello/cose#v1.0.5",
     "debug": "^4.3.4",
     "uncrypto": "^0.1.3"
   },

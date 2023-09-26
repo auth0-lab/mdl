@@ -1,0 +1,117 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`diagnostic info should return the version 1`] = `
+{
+  "attributes": [
+    {
+      "id": "family_name",
+      "ns": "org.iso.18013.5.1",
+      "value": "Smith",
+    },
+    {
+      "id": "given_name",
+      "ns": "org.iso.18013.5.1",
+      "value": "John",
+    },
+    {
+      "id": "birth_date",
+      "ns": "org.iso.18013.5.1",
+      "value": 1980-06-15T00:00:00.000Z,
+    },
+    {
+      "id": "issue_date",
+      "ns": "org.iso.18013.5.1",
+      "value": 2023-03-01T00:00:00.000Z,
+    },
+    {
+      "id": "expiry_date",
+      "ns": "org.iso.18013.5.1",
+      "value": 2028-03-31T00:00:00.000Z,
+    },
+    {
+      "id": "issuing_country",
+      "ns": "org.iso.18013.5.1",
+      "value": "US",
+    },
+    {
+      "id": "issuing_authority",
+      "ns": "org.iso.18013.5.1",
+      "value": "NY DMV",
+    },
+    {
+      "id": "issuing_jurisdiction",
+      "ns": "org.iso.18013.5.1",
+      "value": "New York",
+    },
+    {
+      "id": "document_number",
+      "ns": "org.iso.18013.5.1",
+      "value": "01-333-7070",
+    },
+    {
+      "id": "portrait",
+      "ns": "org.iso.18013.5.1",
+      "value": "bstr",
+    },
+    {
+      "id": "driving_privileges",
+      "ns": "org.iso.18013.5.1",
+      "value": [
+        Map {
+          "vehicle_category_code" => "C",
+          "issue_date" => "2023-03-01",
+          "expiry_date" => "2028-03-31",
+        },
+      ],
+    },
+    {
+      "id": "un_distinguishing_sign",
+      "ns": "org.iso.18013.5.1",
+      "value": "tbd-us.ny.dmv",
+    },
+  ],
+  "common": {
+    "documents": 1,
+    "status": 0,
+    "type": "DeviceResponse",
+    "version": "1.0",
+  },
+  "device_key": {
+    "jwk": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "iBh5ynojixm_D0wfjADpouGbp6b3Pq6SuFHU3htQhVk",
+      "y": "oxS1OAORJ7XNUHNfVFGeM8E0RQVFxWA62fJj-sxW03c",
+    },
+  },
+  "device_signature": {
+    "isValid": true,
+    "reasons": [],
+  },
+  "issuer_certificate": {
+    "notAfter": 2033-09-11T14:55:18.000Z,
+    "notBefore": 2023-09-14T14:55:18.000Z,
+    "pem": "-----BEGIN CERTIFICATE-----
+MIICKjCCAdCgAwIBAgIUV8bM0wi95D7KN0TyqHE42ru4hOgwCgYIKoZIzj0EAwIw
+UzELMAkGA1UEBhMCVVMxETAPBgNVBAgMCE5ldyBZb3JrMQ8wDQYDVQQHDAZBbGJh
+bnkxDzANBgNVBAoMBk5ZIERNVjEPMA0GA1UECwwGTlkgRE1WMB4XDTIzMDkxNDE0
+NTUxOFoXDTMzMDkxMTE0NTUxOFowUzELMAkGA1UEBhMCVVMxETAPBgNVBAgMCE5l
+dyBZb3JrMQ8wDQYDVQQHDAZBbGJhbnkxDzANBgNVBAoMBk5ZIERNVjEPMA0GA1UE
+CwwGTlkgRE1WMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiTwtg0eQbcbNabf2
+Nq9L/VM/lhhPCq2s0Qgw2kRx29tgrBcNHPxTT64tnc1Ij3dH/fl42SXqMenpCDw4
+K6ntU6OBgTB/MB0GA1UdDgQWBBSrbS4DuR1JIkAzj7zK3v2TM+r2xzAfBgNVHSME
+GDAWgBSrbS4DuR1JIkAzj7zK3v2TM+r2xzAPBgNVHRMBAf8EBTADAQH/MCwGCWCG
+SAGG+EIBDQQfFh1PcGVuU1NMIEdlbmVyYXRlZCBDZXJ0aWZpY2F0ZTAKBggqhkjO
+PQQDAgNIADBFAiAJ/Qyrl7A+ePZOdNfc7ohmjEdqCvxaos6//gfTvncuqQIhANo4
+q8mKCA9J8k/+zh//yKbN1bLAtdqPx7dnrDqV3Lg+
+-----END CERTIFICATE-----",
+    "serialNumber": "57c6ccd308bde43eca3744f2a87138dabbb884e8",
+    "subjectName": "C=US, ST=New York, L=Albany, O=NY DMV, OU=NY DMV",
+    "thumbprint": "77cc9f091ee425664ce71735670c56e7260a6f3b",
+  },
+  "issuer_signature": {
+    "isValid": true,
+    "reasons": [],
+  },
+}
+`;
