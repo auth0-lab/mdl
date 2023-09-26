@@ -23,8 +23,8 @@ export class IssuerSignedItem {
     return this.decodedData.get('digestID') as number;
   }
 
-  public get random(): Buffer {
-    return this.decodedData.get('random') as Buffer;
+  public get random(): Uint8Array {
+    return this.decodedData.get('random') as Uint8Array;
   }
 
   public get elementIdentifier(): string {

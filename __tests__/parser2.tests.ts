@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import { importJWK, KeyLike } from 'jose';
 import { hex } from 'buffer-tag';
 import { parseDeviceResponse } from '../src';
 import { DeviceResponse } from '../src/deviceResponse/types';
@@ -7,14 +7,16 @@ import { cborEncode } from '../src/cbor';
 describe('parser', () => {
   describe.only('parseDeviceResponse', () => {
     let parsed: DeviceResponse;
+    let publicKey: KeyLike | Uint8Array;
 
-    // This is a random generated test public key
-    const publicKey: crypto.webcrypto.JsonWebKey = {
-      kty: 'EC',
-      x: '1pFqvIK9kbz7-dwejzpwj9D7kfWbdEKXCpnf6q5sFQs',
-      y: 'WY_RWyq4KR7iLM0ZseIK9Apkt069aM1T5b5HZyEYiXE',
-      crv: 'P-256',
-    };
+    beforeAll(async () => {
+      publicKey = await importJWK({
+        kty: 'EC',
+        x: '1pFqvIK9kbz7-dwejzpwj9D7kfWbdEKXCpnf6q5sFQs',
+        y: 'WY_RWyq4KR7iLM0ZseIK9Apkt069aM1T5b5HZyEYiXE',
+        crv: 'P-256',
+      });
+    });
 
     // this is a Mobile Driver License randomly generated for the purpose of this test
     // signed with the randomly generated private key.
@@ -42,12 +44,12 @@ describe('parser', () => {
     });
 
     it('should verify the issuerAuth', async () => {
-      const r = await parsed.documents[0].issuerSigned.issuerAuth.verify(publicKey, { publicKeyFormat: 'jwk' });
+      const r = await parsed.documents[0].issuerSigned.issuerAuth.verify(publicKey);
       expect(r).toBeTruthy();
     });
 
     it('should decoded protected headers', () => {
-      expect(parsed.documents[0].issuerSigned.issuerAuth.decodedProtectedHeaders)
+      expect(parsed.documents[0].issuerSigned.issuerAuth.protectedHeaders)
         .toMatchSnapshot();
     });
 

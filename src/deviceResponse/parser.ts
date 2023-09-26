@@ -1,10 +1,10 @@
 import { compareVersions } from 'compare-versions';
+import { Mac0, Sign1 } from 'cose';
 import { cborDecode } from '../cbor';
 import {
-  DeviceAuth, DeviceResponse, IssuerAuth, NameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
+  DeviceAuth, DeviceResponse, NameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';
-import CoseSign1 from '../cose/CoseSign1';
-import CoseMac0 from '../cose/CoseMac0';
+import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
 import { MDLParseError } from './errors';
 
@@ -12,7 +12,7 @@ const parseIssuerAuthElement = (
   rawIssuerAuth: RawIssuerAuth,
   expectedDocType: string,
 ): IssuerAuth => {
-  const issuerAuth = new CoseSign1(rawIssuerAuth);
+  const issuerAuth = new IssuerAuth(...rawIssuerAuth);
   const { decodedPayload } = issuerAuth;
   const { docType, version } = decodedPayload;
 
@@ -30,9 +30,9 @@ const parseIssuerAuthElement = (
 const parseDeviceAuthElement = (rawDeviceAuth: RawDeviceAuth): DeviceAuth => {
   const { deviceSignature, deviceMac } = Object.fromEntries(rawDeviceAuth);
   if (deviceSignature) {
-    return { deviceSignature: new CoseSign1(deviceSignature) };
+    return { deviceSignature: new Sign1(...deviceSignature) };
   }
-  return { deviceMac: new CoseMac0(deviceMac) };
+  return { deviceMac: new Mac0(...deviceMac) };
 };
 
 const namespaceToArray = (namespace: RawIndexedDataItem): IssuerSignedItem[] => {

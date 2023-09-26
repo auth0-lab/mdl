@@ -1,6 +1,8 @@
+import { concat } from '../buffer_utils';
+
 const coseKeyMapToBuffer = (
-  deviceKeyCoseKey: Map<number, Buffer | number>,
-): Buffer => {
+  deviceKeyCoseKey: Map<number, Uint8Array | number>,
+): Uint8Array => {
   const kty = deviceKeyCoseKey.get(1);
   if (kty !== 2) {
     throw new Error(`Expected COSE Key type: EC2 (2), got: ${kty}`);
@@ -11,11 +13,12 @@ const coseKeyMapToBuffer = (
     throw new Error(`Expected COSE Key EC2 Curve: P-256 (1), got: ${crv}`);
   }
 
-  return Buffer.concat([
-    Buffer.from([0x04]),
-    deviceKeyCoseKey.get(-2) as Buffer,
-    deviceKeyCoseKey.get(-3) as Buffer,
-  ]);
+  const newLocal = Uint8Array.from([0x04]);
+  return concat(
+    newLocal,
+    deviceKeyCoseKey.get(-2) as Uint8Array,
+    deviceKeyCoseKey.get(-3) as Uint8Array,
+  );
 };
 
 export default coseKeyMapToBuffer;

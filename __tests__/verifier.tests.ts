@@ -13,7 +13,7 @@ describe('verifier', () => {
       const verifier = new DeviceResponseVerifier(trustedCerts);
       await expect(verifier.verify(encodedDeviceResponse, {
         ephemeralReaderKey, encodedSessionTranscript,
-      })).rejects.toThrow('The MSO must be valid at the time of verification');
+      })).rejects.toThrow('No valid certificate paths found');
     });
 
     it('should allow the caller to pass a custom onCheck function', async () => {
@@ -31,7 +31,7 @@ describe('verifier', () => {
           ephemeralReaderKey,
           encodedSessionTranscript,
           onCheck: (verification) => {
-            if (verification.check.includes('The MSO must be valid at the time of verification') &&
+            if (verification.check.includes('Issuer certificate must be valid') &&
               verification.status === 'FAILED') {
               called = true;
             }

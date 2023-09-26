@@ -1,19 +1,17 @@
 import { compareVersions } from 'compare-versions';
 import debug from 'debug';
-
 import { X509Certificate } from '@peculiar/x509';
-import CoseMac0 from '../cose/CoseMac0';
-import { extractX5Chain } from '../cose/headers';
-import coseKeyMapToBuffer from '../cose/coseKey';
+import type { KeyLike } from 'jose';
+import { Mac0, Sign1, importDecodedCOSEKey } from 'cose';
+import { areEqual } from '../buffer_utils';
 
+import coseKeyMapToBuffer from '../cose/coseKey';
 import {
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
-  parseAndValidateCertificateChain,
 } from './utils';
 
 import {
-  IssuerAuth,
   DeviceAuth,
   DSCertificate,
   MobileDocument,
@@ -25,6 +23,7 @@ import {
 
 import { parse } from './parser';
 import { MDLError } from './errors';
+import IssuerAuth from './IssuerAuth';
 
 const log = debug('mdl');
 
@@ -45,14 +44,13 @@ export class DeviceResponseVerifier {
 
   private async verifyIssuerSignature(msg: IssuerAuth, onCheck: OnVerificationAssessmentCallback):
     Promise<{ dsCertificate: DSCertificate }> {
-    // Confirm that the mdoc data is issued by the issuing authority
-
-    // Parse and validate issuer certificate
-    const rawIssuerCertChain = extractX5Chain(msg);
+    let verificationKey: KeyLike;
     let issuerCert: X509Certificate;
 
     try {
-      issuerCert = await parseAndValidateCertificateChain(rawIssuerCertChain, this.issuersRootCertificates);
+      const x509Result = await msg.verifyX509Chain(this.issuersRootCertificates);
+      verificationKey = x509Result.publicKey;
+      issuerCert = new X509Certificate(x509Result.raw);
       onCheck({
         status: 'PASSED',
         check: 'Issuer certificate must be valid',
@@ -63,10 +61,11 @@ export class DeviceResponseVerifier {
         check: 'Issuer certificate must be valid',
         reason: err.message,
       });
+      throw new Error('Issuer certificate must be valid');
     }
 
     // Verify signature
-    const verificationResult = await msg.verify(issuerCert.publicKey.rawData, { publicKeyFormat: 'spki' });
+    const verificationResult = await msg.verify(verificationKey);
 
     onCheck({
       status: verificationResult ? 'PASSED' : 'FAILED',
@@ -108,7 +107,7 @@ export class DeviceResponseVerifier {
   private async verifyDeviceSignature(
     deviceAuth: DeviceAuth,
     options: {
-      deviceKeyCoseKey: Map<number, Buffer | number>;
+      deviceKeyCoseKey: Map<number, number | Uint8Array> | undefined;
       ephemeralPrivateKey: Buffer;
       sessionTranscriptBytes: Buffer;
       docType: string;
@@ -132,14 +131,28 @@ export class DeviceResponseVerifier {
       options.nameSpaces,
     );
 
+    if (!options.deviceKeyCoseKey) {
+      onCheck({
+        status: 'FAILED',
+        check: 'Issuer signature must contain the device key.',
+        reason: 'Unable to verify deviceAuth signature: missing device key in issuerAuth',
+      });
+      return;
+    }
+
     if (deviceAuth.deviceSignature) {
       // ECDSA/EdDSA authentication
       try {
-        const deviceKey = coseKeyMapToBuffer(options.deviceKeyCoseKey);
-        const verificationResult = await deviceAuth.deviceSignature.verify(
-          deviceKey,
-          { publicKeyFormat: 'raw', detachedContent: deviceAuthenticationBytes },
-        );
+        const deviceKey = await importDecodedCOSEKey(options.deviceKeyCoseKey);
+
+        const ds = deviceAuth.deviceSignature;
+        const verificationResult = await new Sign1(
+          ds.protectedHeaders,
+          ds.unprotectedHeaders,
+          ds.payload && ds.payload.byteLength > 0 ? ds.payload : deviceAuthenticationBytes,
+          ds.signature,
+        ).verify(deviceKey);
+
         onCheck({
           status: verificationResult ? 'PASSED' : 'FAILED',
           check: 'Device signature must be valid',
@@ -181,14 +194,15 @@ export class DeviceResponseVerifier {
         options.sessionTranscriptBytes,
       );
 
-      const expectedMac = await CoseMac0.generate(
-        ephemeralMacKey,
-        Buffer.alloc(0),
+      const isValid = await Mac0.create(
+        { alg: 'HS256' },
+        {},
         deviceAuthenticationBytes,
-      );
+        ephemeralMacKey,
+      ).then((mac) => deviceAuth.deviceMac && mac.areEqual(deviceAuth.deviceMac));
 
       onCheck({
-        status: expectedMac.tag.compare(deviceAuth.deviceMac.tag) === 0 ? 'PASSED' : 'FAILED',
+        status: isValid ? 'PASSED' : 'FAILED',
         check: 'Device MAC must be valid',
       });
     } catch (err) {
@@ -218,7 +232,7 @@ export class DeviceResponseVerifier {
     const issuerNameSpaces: ValidatedIssuerNameSpaces = {};
 
     await Promise.all(Object.keys(nameSpaces).map(async (ns) => {
-      const digests = valueDigests.get(ns);
+      const digests = valueDigests.get(ns) as Map<number, Uint8Array>;
       onCheck({
         status: digests ? 'PASSED' : 'FAILED',
         check: `Issuer Auth must include digests for namespace: ${ns}`,
@@ -229,7 +243,8 @@ export class DeviceResponseVerifier {
       await Promise.all(nameSpaces[ns].map(async (ev) => {
         const digest = digests.get(ev.digestID);
         const expectedDigest = await ev.calculateDigest(digestAlgorithm);
-        const isValid = digest && digest.compare(new Uint8Array(expectedDigest)) === 0;
+        const isValid = digest && areEqual(digest, new Uint8Array(expectedDigest));
+
         onCheck({
           status: isValid ? 'PASSED' : 'FAILED',
           check: `Issuer Auth must include a valid digest for ${ns}/${ev.elementIdentifier} element`,
@@ -302,11 +317,11 @@ export class DeviceResponseVerifier {
 
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
-      const { deviceKey } = issuerAuth.decodedPayload.deviceKeyInfo;
+      const { deviceKeyInfo } = issuerAuth.decodedPayload;
       const { dsCertificate } = await this.verifyIssuerSignature(issuerAuth, onCheck);
 
       await this.verifyDeviceSignature(document.deviceSigned.deviceAuth, {
-        deviceKeyCoseKey: deviceKey,
+        deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
         ephemeralPrivateKey: options.ephemeralReaderKey,
         sessionTranscriptBytes: options.encodedSessionTranscript,
         docType: document.docType,

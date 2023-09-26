@@ -3,7 +3,8 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
+      "es2020",
     ],
     "sourceMap": true,
     "module": "commonjs",
@@ -18,7 +19,7 @@
     "esModuleInterop": true,
     "types": [
       "jest",
-      "node"
+      "node",
     ]
   },
   "typedocOptions": {
