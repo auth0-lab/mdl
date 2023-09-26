@@ -39,7 +39,7 @@ export class DeviceResponseVerifier {
   constructor(public readonly issuersRootCertificates: string[]) { }
 
   private async verifyIssuerSignature(msg: IssuerAuth, onCheckG: UserDefinedVerificationCallback):
-    Promise<{ dsCertificate: DSCertificate }> {
+    Promise<{ dsCertificate: DSCertificate } | undefined> {
     const onCheck = onCatCheck(onCheckG, 'ISSUER_AUTH');
     let verificationKey: KeyLike;
     let issuerCert: X509Certificate;
@@ -58,7 +58,7 @@ export class DeviceResponseVerifier {
         check: 'Issuer certificate must be valid',
         reason: err.message,
       });
-      throw new Error('Issuer certificate must be valid');
+      return;
     }
 
     // Verify signature
@@ -324,7 +324,13 @@ export class DeviceResponseVerifier {
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
       const { deviceKeyInfo } = issuerAuth.decodedPayload;
-      const { dsCertificate } = await this.verifyIssuerSignature(issuerAuth, onCheck);
+      const verifyIssuerSignatureResult = await this.verifyIssuerSignature(issuerAuth, onCheck);
+      if (!verifyIssuerSignatureResult) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      const { dsCertificate } = verifyIssuerSignatureResult;
 
       await this.verifyDeviceSignature(document.deviceSigned.deviceAuth, {
         deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
