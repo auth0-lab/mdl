@@ -59,13 +59,20 @@ export class DeviceResponseVerifier {
       });
     }
 
-    // Verify signature
-    const verificationResult = await msg.verify(verificationKey);
-
-    onCheck({
-      status: verificationResult ? 'PASSED' : 'FAILED',
-      check: 'Issuer signature must be valid',
-    });
+    if (!verificationKey) {
+      onCheck({
+        status: 'FAILED',
+        check: 'Issuer signature must be valid',
+        reason: 'Unable to verify issuerAuth signature: certificate is not trusted',
+      });
+    } else {
+      // Verify signature
+      const verificationResult = await msg.verify(verificationKey);
+      onCheck({
+        status: verificationResult ? 'PASSED' : 'FAILED',
+        check: 'Issuer signature must be valid',
+      });
+    }
 
     // Validity
     const { validityInfo } = msg.decodedPayload;
