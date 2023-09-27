@@ -1,6 +1,6 @@
 {
   "name": "mdl",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Parse and and validate MDOC CBOR encoded binaries according to ISO 18013-5.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
