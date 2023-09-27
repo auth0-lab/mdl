@@ -410,7 +410,7 @@ export class DeviceResponseVerifier {
           .every((check) => check.status === 'PASSED'),
         reasons: dr
           .filter((check) => check.category === 'ISSUER_AUTH' && check.status === 'FAILED')
-          .map((check) => check.reason),
+          .map((check) => check.reason ?? check.check),
         digests: Object.fromEntries(
           Array.from(
             document
@@ -431,7 +431,7 @@ export class DeviceResponseVerifier {
           .every((check) => check.status === 'PASSED'),
         reasons: dr
           .filter((check) => (check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY') && check.status === 'FAILED')
-          .map((check) => check.reason),
+          .map((check) => check.reason ?? check.check),
       },
       attributes,
     };
