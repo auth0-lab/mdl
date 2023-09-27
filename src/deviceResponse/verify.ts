@@ -41,6 +41,7 @@ export class DeviceResponseVerifier {
 
   private async verifyIssuerSignature(
     issuerAuth: IssuerAuth,
+    disableCertificateChainValidation: boolean,
     onCheckG: UserDefinedVerificationCallback,
   ) {
     const onCheck = onCatCheck(onCheckG, 'ISSUER_AUTH');
@@ -50,18 +51,20 @@ export class DeviceResponseVerifier {
       issuerAuth.algName,
     )) : undefined;
 
-    try {
-      await issuerAuth.verifyX509Chain(this.issuersRootCertificates);
-      onCheck({
-        status: 'PASSED',
-        check: 'Issuer certificate must be valid',
-      });
-    } catch (err) {
-      onCheck({
-        status: 'FAILED',
-        check: 'Issuer certificate must be valid',
-        reason: err.message,
-      });
+    if (!disableCertificateChainValidation) {
+      try {
+        await issuerAuth.verifyX509Chain(this.issuersRootCertificates);
+        onCheck({
+          status: 'PASSED',
+          check: 'Issuer certificate must be valid',
+        });
+      } catch (err) {
+        onCheck({
+          status: 'FAILED',
+          check: 'Issuer certificate must be valid',
+          reason: err.message,
+        });
+      }
     }
 
     const verificationResult = verificationKey && await issuerAuth.verify(verificationKey);
@@ -300,6 +303,7 @@ export class DeviceResponseVerifier {
     options: {
       encodedSessionTranscript?: Buffer,
       ephemeralReaderKey?: Buffer,
+      disableCertificateChainValidation?: boolean,
       onCheck?: UserDefinedVerificationCallback
     } = {},
   ): Promise<DeviceResponse> {
@@ -328,7 +332,7 @@ export class DeviceResponseVerifier {
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
       const { deviceKeyInfo } = issuerAuth.decodedPayload;
-      await this.verifyIssuerSignature(issuerAuth, onCheck);
+      await this.verifyIssuerSignature(issuerAuth, options.disableCertificateChainValidation, onCheck);
 
       await this.verifyDeviceSignature(document.deviceSigned.deviceAuth, {
         deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
@@ -350,6 +354,7 @@ export class DeviceResponseVerifier {
     options: {
       encodedSessionTranscript?: Buffer,
       ephemeralReaderKey?: Buffer,
+      disableCertificateChainValidation?: boolean,
     },
   ): Promise<DiagnosticInformation> {
     const dr: VerificationAssessment[] = [];
