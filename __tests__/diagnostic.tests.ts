@@ -37,7 +37,6 @@ describe('diagnostic info', () => {
     diagnosticInfo = await verifier2.getDiagnosticInformation(deviceResponse, { ephemeralReaderKey, encodedSessionTranscript });
     expect(diagnosticInfo.issuer_signature.reasons).toEqual([
       'No valid certificate paths found',
-      'Unable to verify issuerAuth signature: certificate is not trusted',
     ]);
   });
 });

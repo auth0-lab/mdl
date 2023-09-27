@@ -1,6 +1,6 @@
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
-import type { JWK, KeyLike } from 'jose';
+import { importX509, type JWK } from 'jose';
 import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importDecodedCOSEKey } from 'cose';
 import crypto from 'uncrypto';
@@ -43,12 +43,11 @@ export class DeviceResponseVerifier {
   private async verifyIssuerSignature(msg: IssuerAuth, onCheckG: UserDefinedVerificationCallback):
     Promise<{ dsCertificate: DSCertificate }> {
     const onCheck = onCatCheck(onCheckG, 'ISSUER_AUTH');
-    let verificationKey: KeyLike;
     const issuerCert = new X509Certificate(msg.x5chain[0]);
+    const verificationKey = await importX509(issuerCert.toString(), msg.algName);
 
     try {
-      const x509Result = await msg.verifyX509Chain(this.issuersRootCertificates);
-      verificationKey = x509Result.publicKey;
+      await msg.verifyX509Chain(this.issuersRootCertificates);
       onCheck({
         status: 'PASSED',
         check: 'Issuer certificate must be valid',
@@ -61,20 +60,11 @@ export class DeviceResponseVerifier {
       });
     }
 
-    if (!verificationKey) {
-      onCheck({
-        status: 'FAILED',
-        check: 'Issuer signature must be valid',
-        reason: 'Unable to verify issuerAuth signature: certificate is not trusted',
-      });
-    } else {
-      // Verify signature
-      const verificationResult = await msg.verify(verificationKey);
-      onCheck({
-        status: verificationResult ? 'PASSED' : 'FAILED',
-        check: 'Issuer signature must be valid',
-      });
-    }
+    const verificationResult = await msg.verify(verificationKey);
+    onCheck({
+      status: verificationResult ? 'PASSED' : 'FAILED',
+      check: 'Issuer signature must be valid',
+    });
 
     // Validity
     const { validityInfo } = msg.decodedPayload;
