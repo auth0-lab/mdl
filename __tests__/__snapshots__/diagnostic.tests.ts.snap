@@ -5,56 +5,67 @@ exports[`diagnostic info should return the version 1`] = `
   "attributes": [
     {
       "id": "family_name",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "Smith",
     },
     {
       "id": "given_name",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "John",
     },
     {
       "id": "birth_date",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": 1980-06-15T00:00:00.000Z,
     },
     {
       "id": "issue_date",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": 2023-03-01T00:00:00.000Z,
     },
     {
       "id": "expiry_date",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": 2028-03-31T00:00:00.000Z,
     },
     {
       "id": "issuing_country",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "US",
     },
     {
       "id": "issuing_authority",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "NY DMV",
     },
     {
       "id": "issuing_jurisdiction",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "New York",
     },
     {
       "id": "document_number",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "01-333-7070",
     },
     {
       "id": "portrait",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "bstr",
     },
     {
       "id": "driving_privileges",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": [
         Map {
@@ -66,6 +77,7 @@ exports[`diagnostic info should return the version 1`] = `
     },
     {
       "id": "un_distinguishing_sign",
+      "isValid": true,
       "ns": "org.iso.18013.5.1",
       "value": "tbd-us.ny.dmv",
     },

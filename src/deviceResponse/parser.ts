@@ -35,16 +35,20 @@ const parseDeviceAuthElement = (rawDeviceAuth: RawDeviceAuth): DeviceAuth => {
   return { deviceMac: new Mac0(...deviceMac) };
 };
 
-const namespaceToArray = (namespace: RawIndexedDataItem): IssuerSignedItem[] => {
-  return namespace.map((di) => new IssuerSignedItem(di));
+const namespaceToArray = (
+  issuerAuth: IssuerAuth,
+  nameSpace: string,
+  entries: RawIndexedDataItem,
+): IssuerSignedItem[] => {
+  return entries.map((di) => new IssuerSignedItem(issuerAuth, nameSpace, di));
 };
 
-const unwrapNamespace = (namespace: RawNameSpaces): NameSpaces => {
-  return Array.from(namespace.entries()).reduce((prev, [k, entries]) => {
-    const mappedNamespace = namespaceToArray(entries);
+const unwrapNamespace = (issuerAuth: IssuerAuth, namespace: RawNameSpaces): NameSpaces => {
+  return Array.from(namespace.entries()).reduce((prev, [nameSpace, entries]) => {
+    const mappedNamespace = namespaceToArray(issuerAuth, nameSpace, entries);
     return {
       ...prev,
-      [k]: mappedNamespace,
+      [nameSpace]: mappedNamespace,
     };
   }, {});
 };
@@ -62,16 +66,20 @@ export const parse = async (
   const { version, documents, status } = Object.fromEntries(deviceResponse);
 
   const parsedDocuments = documents.map((doc: Map<string, any>): MobileDocument => {
+    const issuerAuth = parseIssuerAuthElement(
+      doc.get('issuerSigned').get('issuerAuth'),
+      doc.get('docType'),
+    );
     return {
       raw: doc,
       docType: doc.get('docType'),
       issuerSigned: doc.has('issuerSigned') ? {
         ...doc.get('issuerSigned'),
-        nameSpaces: unwrapNamespace(doc.get('issuerSigned').get('nameSpaces')),
-        issuerAuth: parseIssuerAuthElement(
-          doc.get('issuerSigned').get('issuerAuth'),
-          doc.get('docType'),
+        nameSpaces: unwrapNamespace(
+          issuerAuth,
+          doc.get('issuerSigned').get('nameSpaces'),
         ),
+        issuerAuth,
       } : undefined,
       // @ts-ignore
       deviceSigned: doc.has('deviceSigned') ? {

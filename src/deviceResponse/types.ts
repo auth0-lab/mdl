@@ -1,8 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { Mac0, Sign1 } from 'cose';
+import { JWK } from 'jose';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
-import { JWK } from 'jose';
 
 export type ValidityInfo = {
   signed: Date,
@@ -100,7 +100,8 @@ export type DiagnosticInformation = {
   attributes: {
     ns: string,
     id: string,
-    value: any
+    value: any,
+    isValid: boolean,
   }[],
   issuer_certificate?: {
     subjectName: string;

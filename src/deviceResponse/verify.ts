@@ -4,7 +4,6 @@ import type { JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importDecodedCOSEKey } from 'cose';
 import crypto from 'uncrypto';
-import { areEqual } from '../buffer_utils';
 import coseKeyMapToBuffer from '../cose/coseKey';
 
 import {
@@ -248,27 +247,32 @@ export class DeviceResponseVerifier {
     const issuerNameSpaces: ValidatedIssuerNameSpaces = {};
 
     await Promise.all(Object.keys(nameSpaces).map(async (ns) => {
-      const digests = valueDigests.get(ns) as Map<number, Uint8Array>;
       onCheck({
-        status: digests ? 'PASSED' : 'FAILED',
+        status: valueDigests.has(ns) ? 'PASSED' : 'FAILED',
         check: `Issuer Auth must include digests for namespace: ${ns}`,
       });
 
       issuerNameSpaces[ns] = {};
 
-      await Promise.all(nameSpaces[ns].map(async (ev) => {
-        const digest = digests.get(ev.digestID);
-        const expectedDigest = await ev.calculateDigest(digestAlgorithm);
-        const isValid = digest && areEqual(digest, new Uint8Array(expectedDigest));
-
-        onCheck({
-          status: isValid ? 'PASSED' : 'FAILED',
-          check: `Issuer Auth must include a valid digest for ${ns}/${ev.elementIdentifier} element`,
-        });
-        if (isValid) {
-          issuerNameSpaces[ns][ev.elementIdentifier] = ev.elementValue;
-        }
+      const verifications = await Promise.all(nameSpaces[ns].map(async (ev) => {
+        const isValid = await ev.isValid();
+        return { ev, ns, isValid };
       }));
+
+      verifications.filter((v) => v.isValid).forEach((v) => {
+        onCheck({
+          status: 'PASSED',
+          check: `Issuer Auth must include a valid digest for ${ns}/${v.ev.elementIdentifier} element`,
+        });
+        issuerNameSpaces[ns][v.ev.elementIdentifier] = v.ev.elementValue;
+      });
+
+      verifications.filter((v) => !v.isValid).forEach((v) => {
+        onCheck({
+          status: 'FAILED',
+          check: `Issuer Auth must include a valid digest for ${ns}/${v.ev.elementIdentifier} element`,
+        });
+      });
 
       if (ns === MDL_NAMESPACE) {
         const issuer = dsCertificate?.issuer;
@@ -383,12 +387,13 @@ export class DeviceResponseVerifier {
       document.issuerSigned.issuerAuth.x5chain.length > 0 &&
       new X509Certificate(document.issuerSigned.issuerAuth.x5chain[0]);
 
-    const attributes = Object.keys(document.issuerSigned.nameSpaces).map((ns) => {
+    const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
-      return items.map((item) => {
-        return { ns, id: item.elementIdentifier, value: item.elementValue };
-      });
-    }).flat();
+      return Promise.all(items.map(async (item) => {
+        const isValid = await item.isValid();
+        return { ns, id: item.elementIdentifier, value: item.elementValue, isValid };
+      }));
+    }))).flat();
 
     let deviceKey: JWK;
 

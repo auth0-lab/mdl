@@ -1,14 +1,27 @@
 import { subtle } from 'uncrypto';
 import { cborEncode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
+import IssuerAuth from './IssuerAuth';
+import { areEqual } from '../buffer_utils';
+
+const supportedDigestAlgorithms = ['SHA-256', 'SHA-384', 'SHA-512'];
 
 // eslint-disable-next-line no-use-before-define
 export type IssuerSignedDataItem = DataItem<Map<keyof IssuerSignedItem, unknown>>;
 
 export class IssuerSignedItem {
   private readonly dataItem: IssuerSignedDataItem;
+  #issuerAuth: IssuerAuth;
+  #nameSpace: string;
+  #isValid: boolean | undefined;
 
-  constructor(dataItem: IssuerSignedDataItem) {
+  constructor(
+    issuerAuth: IssuerAuth,
+    nameSpace: string,
+    dataItem: IssuerSignedDataItem,
+  ) {
+    this.#issuerAuth = issuerAuth;
+    this.#nameSpace = nameSpace;
     this.dataItem = dataItem;
   }
 
@@ -35,9 +48,25 @@ export class IssuerSignedItem {
     return this.decodedData.get('elementValue');
   }
 
-  public async calculateDigest(alg: Parameters<SubtleCrypto['digest']>[0]) {
+  private async calculateDigest(alg: Parameters<SubtleCrypto['digest']>[0]) {
     const bytes = cborEncode(this.dataItem);
     const result = await subtle.digest(alg, bytes);
     return result;
+  }
+
+  public async isValid(): Promise<boolean> {
+    if (typeof this.#isValid !== 'undefined') { return this.#isValid; }
+    const { valueDigests, digestAlgorithm } = this.#issuerAuth.decodedPayload;
+    if (!supportedDigestAlgorithms.includes(digestAlgorithm)) {
+      this.#isValid = false;
+      return false;
+    }
+    const digest = await this.calculateDigest(digestAlgorithm);
+    const digests = valueDigests.get(this.#nameSpace) as Map<number, Uint8Array> | undefined;
+    if (typeof digests === 'undefined') { return false; }
+    const expectedDigest = digests.get(this.digestID);
+    this.#isValid = expectedDigest &&
+      areEqual(new Uint8Array(digest), expectedDigest);
+    return this.#isValid;
   }
 }
