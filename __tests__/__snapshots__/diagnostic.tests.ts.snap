@@ -36,6 +36,7 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "issuing_country",
       "isValid": true,
+      "matchCertificate": true,
       "ns": "org.iso.18013.5.1",
       "value": "US",
     },
@@ -48,6 +49,7 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "issuing_jurisdiction",
       "isValid": true,
+      "matchCertificate": true,
       "ns": "org.iso.18013.5.1",
       "value": "New York",
     },

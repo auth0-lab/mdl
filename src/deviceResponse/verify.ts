@@ -33,6 +33,9 @@ const DIGEST_ALGS = {
   'SHA-512': 'sha512',
 } as { [key: string]: string };
 
+type ArrayElement<ArrayType extends readonly unknown[]> =
+  ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
+
 export class DeviceResponseVerifier {
   /**
    *
@@ -280,6 +283,7 @@ export class DeviceResponseVerifier {
           onCheck({
             status: issuingCountryIsValid,
             check: "The 'issuing_country' if present must match the 'countryName' in the subject field within the DS certificate",
+            code: 'ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME',
             reason: issuingCountryIsValid ?
               undefined :
               `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${dsCertificate.issuer.countryName}) in the subject field within the issuer certificate`,
@@ -292,6 +296,7 @@ export class DeviceResponseVerifier {
           onCheck({
             status: issuingJurisdictionIsValid,
             check: "The 'issuing_jurisdiction' if present must match the 'stateOrProvinceName' in the subject field within the DS certificate",
+            code: 'ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME',
             reason: issuingJurisdictionIsValid ? undefined : `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${dsCertificate.issuer.stateOrProvinceName}) in the subject field within the issuer certificate`,
           });
         }
@@ -379,9 +384,17 @@ export class DeviceResponseVerifier {
 
     const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
-      return Promise.all(items.map(async (item) => {
+      type Attribute = ArrayElement<DiagnosticInformation['attributes']>;
+      return Promise.all(items.map(async (item): Promise<Attribute> => {
         const isValid = await item.isValid();
-        return { ns, id: item.elementIdentifier, value: item.elementValue, isValid };
+        const r: Attribute = { ns, id: item.elementIdentifier, value: item.elementValue, isValid };
+        if (item.elementIdentifier === 'issuing_country') {
+          r.matchCertificate = dr.some((v) => v.code === 'ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME' && v.status === 'PASSED');
+        }
+        if (item.elementIdentifier === 'issuing_jurisdiction') {
+          r.matchCertificate = dr.some((v) => v.code === 'ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME' && v.status === 'PASSED');
+        }
+        return r;
       }));
     }))).flat();
 
@@ -408,6 +421,8 @@ export class DeviceResponseVerifier {
         notAfter: issuerCert.notAfter,
         serialNumber: issuerCert.serialNumber,
         thumbprint: Buffer.from(await issuerCert.getThumbprint(crypto)).toString('hex'),
+        // ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME
+        // ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME
       } : undefined,
       issuer_signature: {
         isValid: dr

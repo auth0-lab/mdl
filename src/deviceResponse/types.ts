@@ -102,6 +102,7 @@ export type DiagnosticInformation = {
     id: string,
     value: any,
     isValid: boolean,
+    matchCertificate?: boolean,
   }[],
   issuer_certificate?: {
     subjectName: string;
