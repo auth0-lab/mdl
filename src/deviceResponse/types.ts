@@ -115,6 +115,9 @@ export type DiagnosticInformation = {
   issuer_signature: {
     isValid: boolean;
     reasons?: string[];
+    digests: {
+      [ns: string]: number;
+    };
   },
   device_key: {
     jwk: JWK;

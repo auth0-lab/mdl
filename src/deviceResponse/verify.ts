@@ -431,6 +431,7 @@ export class DeviceResponseVerifier {
         reasons: dr
           .filter((check) => check.category === 'ISSUER_AUTH' && check.status === 'FAILED')
           .map((check) => check.reason),
+        digests: Object.fromEntries(Array.from(document.issuerSigned.issuerAuth.decodedPayload.valueDigests.entries()).map(([ns, digests]) => [ns, digests.size])),
       },
       device_key: {
         jwk: deviceKey,
