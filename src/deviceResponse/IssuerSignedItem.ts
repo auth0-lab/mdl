@@ -4,6 +4,8 @@ import { DataItem } from '../cbor/DataItem';
 import IssuerAuth from './IssuerAuth';
 import { areEqual } from '../buffer_utils';
 
+const MDL_NAMESPACE = 'org.iso.18013.5.1';
+
 const supportedDigestAlgorithms = ['SHA-256', 'SHA-384', 'SHA-512'];
 
 // eslint-disable-next-line no-use-before-define
@@ -68,5 +70,17 @@ export class IssuerSignedItem {
     this.#isValid = expectedDigest &&
       areEqual(new Uint8Array(digest), expectedDigest);
     return this.#isValid;
+  }
+
+  public matchCertificate(): boolean | undefined {
+    if (this.#nameSpace !== MDL_NAMESPACE) { return undefined; }
+
+    if (this.elementIdentifier === 'issuing_country') {
+      return this.#issuerAuth.countryName === this.elementValue;
+    }
+    if (this.elementIdentifier === 'issuing_jurisdiction') {
+      return this.#issuerAuth.stateOrProvince === this.elementValue;
+    }
+    return undefined;
   }
 }

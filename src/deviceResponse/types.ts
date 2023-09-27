@@ -11,17 +11,6 @@ export type ValidityInfo = {
   expectedUpdate?: Date,
 };
 
-export type DSCertificate = {
-  validity: {
-    notBefore: Date,
-    notAfter: Date,
-  },
-  issuer: {
-    countryName: string;
-    stateOrProvinceName?: string;
-  }
-};
-
 export type NameSpaces = {
   [x: string]: IssuerSignedItem[];
 };

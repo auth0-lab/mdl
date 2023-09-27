@@ -8,7 +8,6 @@ export type VerificationAssessment = {
   category: 'DOCUMENT_FORMAT' | 'DEVICE_AUTH' | 'ISSUER_AUTH' | 'DATA_INTEGRITY',
   check: string,
   reason?: string,
-  code?: string,
 };
 
 export type VerificationCallback = (item: VerificationAssessment) => void;

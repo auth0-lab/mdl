@@ -6,30 +6,35 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "family_name",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "Smith",
     },
     {
       "id": "given_name",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "John",
     },
     {
       "id": "birth_date",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": 1980-06-15T00:00:00.000Z,
     },
     {
       "id": "issue_date",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": 2023-03-01T00:00:00.000Z,
     },
     {
       "id": "expiry_date",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": 2028-03-31T00:00:00.000Z,
     },
@@ -43,6 +48,7 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "issuing_authority",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "NY DMV",
     },
@@ -56,18 +62,21 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "document_number",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "01-333-7070",
     },
     {
       "id": "portrait",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "bstr",
     },
     {
       "id": "driving_privileges",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": [
         Map {
@@ -80,6 +89,7 @@ exports[`diagnostic info should return the version 1`] = `
     {
       "id": "un_distinguishing_sign",
       "isValid": true,
+      "matchCertificate": undefined,
       "ns": "org.iso.18013.5.1",
       "value": "tbd-us.ny.dmv",
     },

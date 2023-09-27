@@ -1,4 +1,5 @@
 import { Sign1 } from 'cose';
+import { X509Certificate } from '@peculiar/x509';
 import { cborDecode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
 import { ValidityInfo } from './types';
@@ -28,6 +29,7 @@ type Payload = {
  */
 export default class IssuerAuth extends Sign1 {
   #decodedPayload: Payload;
+  #certificate: X509Certificate;
 
   constructor(
     protectedHeader: Map<number, unknown> | Uint8Array,
@@ -57,5 +59,20 @@ export default class IssuerAuth extends Sign1 {
     };
     this.#decodedPayload = result;
     return result;
+  }
+
+  public get certificate() {
+    if (typeof this.#certificate === 'undefined' && this.x5chain?.length) {
+      this.#certificate = new X509Certificate(this.x5chain[0]);
+    }
+    return this.#certificate;
+  }
+
+  public get countryName() {
+    return this.certificate?.issuerName.getField('C')[0];
+  }
+
+  public get stateOrProvince() {
+    return this.certificate?.issuerName.getField('ST')[0];
   }
 }

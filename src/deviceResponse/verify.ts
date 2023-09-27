@@ -1,6 +1,6 @@
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
-import { importX509, type JWK } from 'jose';
+import { importX509, JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importDecodedCOSEKey } from 'cose';
 import crypto from 'uncrypto';
@@ -13,7 +13,6 @@ import {
 
 import {
   DeviceAuth,
-  DSCertificate,
   MobileDocument,
   ValidatedIssuerNameSpaces,
   NameSpaces,
@@ -33,9 +32,6 @@ const DIGEST_ALGS = {
   'SHA-512': 'sha512',
 } as { [key: string]: string };
 
-type ArrayElement<ArrayType extends readonly unknown[]> =
-  ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
-
 export class DeviceResponseVerifier {
   /**
    *
@@ -43,14 +39,19 @@ export class DeviceResponseVerifier {
    */
   constructor(public readonly issuersRootCertificates: string[]) { }
 
-  private async verifyIssuerSignature(msg: IssuerAuth, onCheckG: UserDefinedVerificationCallback):
-    Promise<{ dsCertificate: DSCertificate }> {
+  private async verifyIssuerSignature(
+    issuerAuth: IssuerAuth,
+    onCheckG: UserDefinedVerificationCallback,
+  ) {
     const onCheck = onCatCheck(onCheckG, 'ISSUER_AUTH');
-    const issuerCert = new X509Certificate(msg.x5chain[0]);
-    const verificationKey = await importX509(issuerCert.toString(), msg.algName);
+    const { certificate, countryName } = issuerAuth;
+    const verificationKey: KeyLike | undefined = certificate ? (await importX509(
+      certificate.toString(),
+      issuerAuth.algName,
+    )) : undefined;
 
     try {
-      await msg.verifyX509Chain(this.issuersRootCertificates);
+      await issuerAuth.verifyX509Chain(this.issuersRootCertificates);
       onCheck({
         status: 'PASSED',
         check: 'Issuer certificate must be valid',
@@ -63,43 +64,32 @@ export class DeviceResponseVerifier {
       });
     }
 
-    const verificationResult = await msg.verify(verificationKey);
+    const verificationResult = verificationKey && await issuerAuth.verify(verificationKey);
     onCheck({
       status: verificationResult ? 'PASSED' : 'FAILED',
       check: 'Issuer signature must be valid',
     });
 
     // Validity
-    const { validityInfo } = msg.decodedPayload;
+    const { validityInfo } = issuerAuth.decodedPayload;
     const now = new Date();
 
     onCheck({
-      status: validityInfo.signed < issuerCert.notBefore || validityInfo.signed > issuerCert.notAfter ? 'FAILED' : 'PASSED',
+      status: certificate && validityInfo && (validityInfo.signed < certificate.notBefore || validityInfo.signed > certificate.notAfter) ? 'FAILED' : 'PASSED',
       check: 'The MSO signed date must be within the validity period of the certificate',
-      reason: `The MSO signed date (${validityInfo.signed.toUTCString()}) must be within the validity period of the certificate (${issuerCert.notBefore.toUTCString()} to ${issuerCert.notAfter.toUTCString()})`,
+      reason: `The MSO signed date (${validityInfo.signed.toUTCString()}) must be within the validity period of the certificate (${certificate.notBefore.toUTCString()} to ${certificate.notAfter.toUTCString()})`,
     });
 
     onCheck({
-      status: now < validityInfo.validFrom || now > validityInfo.validUntil ? 'FAILED' : 'PASSED',
+      status: validityInfo && (now < validityInfo.validFrom || now > validityInfo.validUntil) ? 'FAILED' : 'PASSED',
       check: 'The MSO must be valid at the time of verification',
       reason: `The MSO must be valid at the time of verification (${now.toUTCString()})`,
     });
 
-    // countryName is mandatory, stateOrProvinceName is optional
-    const stateOrProvinceName = issuerCert.issuerName.getField('ST')[0];
-    const countryName = issuerCert.issuerName.getField('C')[0];
     onCheck({
       status: countryName ? 'PASSED' : 'FAILED',
       check: 'Country name (C) must be present in the issuer certificate\'s subject distinguished name',
     });
-
-    // eslint-disable-next-line consistent-return
-    return {
-      dsCertificate: {
-        issuer: { countryName, stateOrProvinceName },
-        validity: { notBefore: issuerCert.notBefore, notAfter: issuerCert.notAfter },
-      },
-    };
   }
 
   private async verifyDeviceSignature(
@@ -223,7 +213,6 @@ export class DeviceResponseVerifier {
 
   private async verifyData(
     mdoc: MobileDocument,
-    dsCertificate: DSCertificate | undefined,
     onCheckG: UserDefinedVerificationCallback,
   ) {
     // Confirm that the mdoc data has not changed since issuance
@@ -245,8 +234,6 @@ export class DeviceResponseVerifier {
         check: `Issuer Auth must include digests for namespace: ${ns}`,
       });
 
-      issuerNameSpaces[ns] = {};
-
       const verifications = await Promise.all(nameSpaces[ns].map(async (ev) => {
         const isValid = await ev.isValid();
         return { ev, ns, isValid };
@@ -257,7 +244,6 @@ export class DeviceResponseVerifier {
           status: 'PASSED',
           check: `Issuer Auth must include a valid digest for ${ns}/${v.ev.elementIdentifier} element`,
         });
-        issuerNameSpaces[ns][v.ev.elementIdentifier] = v.ev.elementValue;
       });
 
       verifications.filter((v) => !v.isValid).forEach((v) => {
@@ -268,7 +254,7 @@ export class DeviceResponseVerifier {
       });
 
       if (ns === MDL_NAMESPACE) {
-        const issuer = dsCertificate?.issuer;
+        const issuer = issuerAuth.certificate.issuerName;
         if (!issuer) {
           onCheck({
             status: 'FAILED',
@@ -276,28 +262,26 @@ export class DeviceResponseVerifier {
             reason: "The 'issuing_country' and 'issuing_jurisdiction' cannot be verified because the DS certificate was not provided",
           });
         } else {
-          const issuingCountryIsValid = typeof issuerNameSpaces[ns].issuing_country === 'undefined' ||
-            (typeof issuer !== 'undefined' &&
-              issuerNameSpaces[ns].issuing_country === issuer.countryName) ? 'PASSED' : 'FAILED';
-          // if the `issuing_country` was retrieved, verify that the value matches the `countryName` in the subject field within the DS certificate
+          const isCountryInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_country')
+            .some((v) => !v.isValid || !v.ev.matchCertificate());
+
           onCheck({
-            status: issuingCountryIsValid,
+            status: isCountryInvalid ? 'FAILED' : 'PASSED',
             check: "The 'issuing_country' if present must match the 'countryName' in the subject field within the DS certificate",
-            code: 'ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME',
-            reason: issuingCountryIsValid ?
-              undefined :
-              `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${dsCertificate.issuer.countryName}) in the subject field within the issuer certificate`,
+            reason: isCountryInvalid ?
+              `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${issuerAuth.countryName}) in the subject field within the issuer certificate` :
+              undefined,
           });
 
-          const issuingJurisdictionIsValid = typeof issuerNameSpaces[ns].issuing_jurisdiction === 'undefined' ||
-            typeof dsCertificate.issuer.stateOrProvinceName === 'undefined' ||
-            issuerNameSpaces[ns].issuing_jurisdiction === dsCertificate.issuer.stateOrProvinceName ? 'PASSED' : 'FAILED';
-          // if the `issuing_jurisdiction` was retrieved, and `stateOrProvinceName` is present in the subject field within the DS certificate, they must have the same value
+          const isJurisdictionInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
+            .some((v) => !v.isValid || !v.ev.matchCertificate());
+
           onCheck({
-            status: issuingJurisdictionIsValid,
+            status: isJurisdictionInvalid ? 'FAILED' : 'PASSED',
             check: "The 'issuing_jurisdiction' if present must match the 'stateOrProvinceName' in the subject field within the DS certificate",
-            code: 'ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME',
-            reason: issuingJurisdictionIsValid ? undefined : `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${dsCertificate.issuer.stateOrProvinceName}) in the subject field within the issuer certificate`,
+            reason: isJurisdictionInvalid ?
+              `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${issuerAuth.stateOrProvince}) in the subject field within the issuer certificate` :
+              undefined,
           });
         }
       }
@@ -344,7 +328,7 @@ export class DeviceResponseVerifier {
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
       const { deviceKeyInfo } = issuerAuth.decodedPayload;
-      const { dsCertificate } = await this.verifyIssuerSignature(issuerAuth, onCheck);
+      await this.verifyIssuerSignature(issuerAuth, onCheck);
 
       await this.verifyDeviceSignature(document.deviceSigned.deviceAuth, {
         deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
@@ -355,7 +339,7 @@ export class DeviceResponseVerifier {
         onCheck,
       });
 
-      await this.verifyData(document, dsCertificate, onCheck);
+      await this.verifyData(document, onCheck);
     }
 
     return dr;
@@ -384,17 +368,15 @@ export class DeviceResponseVerifier {
 
     const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
-      type Attribute = ArrayElement<DiagnosticInformation['attributes']>;
-      return Promise.all(items.map(async (item): Promise<Attribute> => {
+      return Promise.all(items.map(async (item) => {
         const isValid = await item.isValid();
-        const r: Attribute = { ns, id: item.elementIdentifier, value: item.elementValue, isValid };
-        if (item.elementIdentifier === 'issuing_country') {
-          r.matchCertificate = dr.some((v) => v.code === 'ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME' && v.status === 'PASSED');
-        }
-        if (item.elementIdentifier === 'issuing_jurisdiction') {
-          r.matchCertificate = dr.some((v) => v.code === 'ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME' && v.status === 'PASSED');
-        }
-        return r;
+        return {
+          ns,
+          id: item.elementIdentifier,
+          value: item.elementValue,
+          isValid,
+          matchCertificate: item.matchCertificate(),
+        };
       }));
     }))).flat();
 
@@ -421,8 +403,6 @@ export class DeviceResponseVerifier {
         notAfter: issuerCert.notAfter,
         serialNumber: issuerCert.serialNumber,
         thumbprint: Buffer.from(await issuerCert.getThumbprint(crypto)).toString('hex'),
-        // ISSUING_COUNTRY_MUST_MATCH_CERT_COUNTRY_NAME
-        // ISSUING_JURISDICTION_MUST_MATCH_CERT_STATE_OR_PROV_NAME
       } : undefined,
       issuer_signature: {
         isValid: dr
@@ -431,7 +411,16 @@ export class DeviceResponseVerifier {
         reasons: dr
           .filter((check) => check.category === 'ISSUER_AUTH' && check.status === 'FAILED')
           .map((check) => check.reason),
-        digests: Object.fromEntries(Array.from(document.issuerSigned.issuerAuth.decodedPayload.valueDigests.entries()).map(([ns, digests]) => [ns, digests.size])),
+        digests: Object.fromEntries(
+          Array.from(
+            document
+              .issuerSigned
+              .issuerAuth
+              .decodedPayload
+              .valueDigests
+              .entries(),
+          ).map(([ns, digests]) => [ns, digests.size]),
+        ),
       },
       device_key: {
         jwk: deviceKey,
