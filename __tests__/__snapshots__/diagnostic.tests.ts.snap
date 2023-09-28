@@ -134,6 +134,7 @@ q8mKCA9J8k/+zh//yKbN1bLAtdqPx7dnrDqV3Lg+
     "thumbprint": "77cc9f091ee425664ce71735670c56e7260a6f3b",
   },
   "issuer_signature": {
+    "alg": "ES256",
     "digests": {
       "org.custom.test": 1,
       "org.iso.18013.5.1": 12,

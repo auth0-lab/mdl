@@ -410,6 +410,7 @@ export class DeviceResponseVerifier {
         thumbprint: Buffer.from(await issuerCert.getThumbprint(crypto)).toString('hex'),
       } : undefined,
       issuer_signature: {
+        alg: document.issuerSigned.issuerAuth.algName,
         isValid: dr
           .filter((check) => check.category === 'ISSUER_AUTH')
           .every((check) => check.status === 'PASSED'),

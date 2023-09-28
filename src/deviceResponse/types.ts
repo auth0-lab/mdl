@@ -102,6 +102,7 @@ export type DiagnosticInformation = {
     pem: string;
   },
   issuer_signature: {
+    alg: string,
     isValid: boolean;
     reasons?: string[];
     digests: {
