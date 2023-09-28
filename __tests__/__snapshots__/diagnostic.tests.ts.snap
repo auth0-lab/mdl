@@ -109,6 +109,7 @@ exports[`diagnostic info should return the version 1`] = `
     },
   },
   "device_signature": {
+    "alg": "ES256",
     "isValid": true,
     "reasons": [],
   },

@@ -432,6 +432,8 @@ export class DeviceResponseVerifier {
         jwk: deviceKey,
       },
       device_signature: {
+        alg: document.deviceSigned.deviceAuth.deviceSignature?.algName ??
+          document.deviceSigned.deviceAuth.deviceMac?.algName,
         isValid: dr
           .filter((check) => check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY')
           .every((check) => check.status === 'PASSED'),

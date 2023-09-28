@@ -113,6 +113,7 @@ export type DiagnosticInformation = {
     jwk: JWK;
   },
   device_signature: {
+    alg: string;
     isValid: boolean;
     reasons?: string[];
   }
