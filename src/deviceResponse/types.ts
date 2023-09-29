@@ -80,11 +80,12 @@ export type DeviceResponse = {
 };
 
 export type DiagnosticInformation = {
-  common: {
+  general: {
     type: string,
     version: string,
     status: number,
     documents: number,
+    validityInfo: ValidityInfo,
   },
   attributes: {
     ns: string,
