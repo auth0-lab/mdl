@@ -395,7 +395,7 @@ export class DeviceResponseVerifier {
     }
 
     return {
-      common: {
+      general: {
         version: decoded.version,
         type: 'DeviceResponse',
         status: decoded.status,
