@@ -36,7 +36,7 @@ export type DeviceAuth =
 
 export type DeviceSigned = {
   deviceAuth: DeviceAuth;
-  nameSpaces: NameSpaces;
+  nameSpaces: Map<string, Map<string, any>>;
 };
 
 export type RawIndexedDataItem = IssuerSignedDataItem[];
@@ -47,23 +47,7 @@ type RawAuthElement = ConstructorParameters<typeof Sign1>;
 
 export type RawIssuerAuth = ConstructorParameters<typeof Sign1>;
 
-export type RawIssuerSigned = {
-  issuerAuth: RawIssuerAuth;
-  nameSpaces: RawNameSpaces;
-};
-
 export type RawDeviceAuth = Map<'deviceMac' | 'deviceSignature', RawAuthElement>;
-
-export type RawDeviceSigned = {
-  deviceAuth: RawDeviceAuth;
-  nameSpaces: RawNameSpaces;
-};
-
-export type RawMobileDocument = {
-  docType: string;
-  issuerSigned: RawIssuerSigned;
-  deviceSigned: RawDeviceSigned;
-};
 
 export type MobileDocument = {
   docType: string;
@@ -94,7 +78,12 @@ export type DiagnosticInformation = {
     isValid: boolean,
     matchCertificate?: boolean,
   }[],
-  issuer_certificate?: {
+  deviceAttributes: {
+    ns: string,
+    id: string,
+    value: any,
+  }[],
+  issuerCertificate?: {
     subjectName: string;
     notBefore: Date;
     notAfter: Date;
@@ -102,7 +91,7 @@ export type DiagnosticInformation = {
     thumbprint: string;
     pem: string;
   },
-  issuer_signature: {
+  issuerSignature: {
     alg: string,
     isValid: boolean;
     reasons?: string[];
@@ -110,10 +99,10 @@ export type DiagnosticInformation = {
       [ns: string]: number;
     };
   },
-  device_key: {
+  deviceKey: {
     jwk: JWK;
   },
-  device_signature: {
+  deviceSignature: {
     alg: string;
     isValid: boolean;
     reasons?: string[];

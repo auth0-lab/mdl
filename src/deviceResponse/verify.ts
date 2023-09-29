@@ -15,7 +15,6 @@ import {
   DeviceAuth,
   MobileDocument,
   ValidatedIssuerNameSpaces,
-  NameSpaces,
   DeviceResponse,
   DiagnosticInformation,
 } from './types';
@@ -102,7 +101,7 @@ export class DeviceResponseVerifier {
       ephemeralPrivateKey?: Buffer;
       sessionTranscriptBytes?: Buffer;
       docType: string;
-      nameSpaces: NameSpaces;
+      nameSpaces: Map<string, Map<string, any>>;
       onCheck: UserDefinedVerificationCallback;
     },
   ) {
@@ -146,10 +145,11 @@ export class DeviceResponseVerifier {
         const deviceKey = await importDecodedCOSEKey(options.deviceKeyCoseKey);
 
         const ds = deviceAuth.deviceSignature;
+
         const verificationResult = await new Sign1(
           ds.protectedHeaders,
           ds.unprotectedHeaders,
-          ds.payload && ds.payload.byteLength > 0 ? ds.payload : deviceAuthenticationBytes,
+          deviceAuthenticationBytes,
           ds.signature,
         ).verify(deviceKey);
 
@@ -385,6 +385,15 @@ export class DeviceResponseVerifier {
       }));
     }))).flat();
 
+    const deviceAttributes = Array.from(document.deviceSigned.nameSpaces.entries()).map(([ns, items]) => {
+      return Array.from(items.entries()).map(([id, value]) => {
+        return {
+          ns,
+          id,
+          value,
+        };
+      });
+    }).flat();
     let deviceKey: JWK;
 
     if (document?.issuerSigned.issuerAuth) {
@@ -402,7 +411,7 @@ export class DeviceResponseVerifier {
         documents: decoded.documents.length,
       },
       validityInfo: document.issuerSigned.issuerAuth.decodedPayload.validityInfo,
-      issuer_certificate: issuerCert ? {
+      issuerCertificate: issuerCert ? {
         subjectName: issuerCert.subjectName.toString(),
         pem: issuerCert.toString(),
         notBefore: issuerCert.notBefore,
@@ -410,7 +419,7 @@ export class DeviceResponseVerifier {
         serialNumber: issuerCert.serialNumber,
         thumbprint: Buffer.from(await issuerCert.getThumbprint(crypto)).toString('hex'),
       } : undefined,
-      issuer_signature: {
+      issuerSignature: {
         alg: document.issuerSigned.issuerAuth.algName,
         isValid: dr
           .filter((check) => check.category === 'ISSUER_AUTH')
@@ -429,10 +438,10 @@ export class DeviceResponseVerifier {
           ).map(([ns, digests]) => [ns, digests.size]),
         ),
       },
-      device_key: {
+      deviceKey: {
         jwk: deviceKey,
       },
-      device_signature: {
+      deviceSignature: {
         alg: document.deviceSigned.deviceAuth.deviceSignature?.algName ??
           document.deviceSigned.deviceAuth.deviceMac?.algName,
         isValid: dr
@@ -443,6 +452,7 @@ export class DeviceResponseVerifier {
           .map((check) => check.reason ?? check.check),
       },
       attributes,
+      deviceAttributes,
     };
   }
 }

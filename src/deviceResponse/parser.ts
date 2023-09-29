@@ -84,7 +84,7 @@ export const parse = async (
       // @ts-ignore
       deviceSigned: doc.has('deviceSigned') ? {
         ...doc.get('deviceSigned'),
-        nameSpaces: doc.get('deviceSigned').get('nameSpaces'),
+        nameSpaces: doc.get('deviceSigned').get('nameSpaces').data,
         deviceAuth: parseDeviceAuthElement(doc.get('deviceSigned').get('deviceAuth')),
       } : undefined,
     };

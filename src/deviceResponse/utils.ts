@@ -3,7 +3,6 @@ import { p256 } from '@noble/curves/p256';
 import * as webcrypto from 'uncrypto';
 import { Buffer } from 'buffer';
 import { cborEncode, cborDecode } from '../cbor';
-import { NameSpaces } from './types';
 import { DataItem } from '../cbor/DataItem';
 
 const { subtle } = webcrypto;
@@ -74,7 +73,7 @@ export const calculateEphemeralMacKey = async (
 export const calculateDeviceAutenticationBytes = (
   sessionTranscriptBytes: Uint8Array,
   docType: string,
-  nameSpaces: NameSpaces,
+  nameSpaces: Map<string, Map<string, any>>,
 ): Uint8Array => {
   const { data: decodedSessionTranscript } = cborDecode(sessionTranscriptBytes) as DataItem;
 
@@ -82,7 +81,7 @@ export const calculateDeviceAutenticationBytes = (
     'DeviceAuthentication',
     decodedSessionTranscript,
     docType,
-    nameSpaces,
+    DataItem.fromData(nameSpaces),
   ]);
 
   const result = cborEncode(encode);

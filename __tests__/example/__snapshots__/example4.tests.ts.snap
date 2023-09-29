@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`diagnostic info should return the version 1`] = `
+exports[`example 4: device response with device attributes should get the right diagnostic info 1`] = `
 {
   "attributes": [
     {
@@ -94,7 +94,18 @@ exports[`diagnostic info should return the version 1`] = `
       "value": "tbd-us.ny.dmv",
     },
   ],
-  "deviceAttributes": [],
+  "deviceAttributes": [
+    {
+      "id": "version",
+      "ns": "org.iso.wallet.mDL",
+      "value": 1,
+    },
+    {
+      "id": "deviceName",
+      "ns": "org.iso.wallet.mDL",
+      "value": "mDL Super Wallet",
+    },
+  ],
   "deviceKey": {
     "jwk": {
       "crv": "P-256",
@@ -145,9 +156,9 @@ q8mKCA9J8k/+zh//yKbN1bLAtdqPx7dnrDqV3Lg+
     "reasons": [],
   },
   "validityInfo": {
-    "signed": 2023-09-29T15:41:59.000Z,
-    "validFrom": 2023-09-29T15:41:59.000Z,
-    "validUntil": 2073-09-29T15:41:59.000Z,
+    "signed": 2023-09-29T15:06:20.000Z,
+    "validFrom": 2023-09-29T15:06:20.000Z,
+    "validUntil": 2073-09-29T15:06:20.000Z,
   },
 }
 `;
