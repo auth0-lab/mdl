@@ -400,8 +400,8 @@ export class DeviceResponseVerifier {
         type: 'DeviceResponse',
         status: decoded.status,
         documents: decoded.documents.length,
-        validityInfo: document.issuerSigned.issuerAuth.decodedPayload.validityInfo,
       },
+      validityInfo: document.issuerSigned.issuerAuth.decodedPayload.validityInfo,
       issuer_certificate: issuerCert ? {
         subjectName: issuerCert.subjectName.toString(),
         pem: issuerCert.toString(),

@@ -111,11 +111,6 @@ exports[`diagnostic info should return the version 1`] = `
     "documents": 1,
     "status": 0,
     "type": "DeviceResponse",
-    "validityInfo": {
-      "signed": 2023-09-26T17:11:18.000Z,
-      "validFrom": 2023-09-26T17:11:18.000Z,
-      "validUntil": 2073-09-26T17:11:18.000Z,
-    },
     "version": "1.0",
   },
   "issuer_certificate": {
@@ -147,6 +142,11 @@ q8mKCA9J8k/+zh//yKbN1bLAtdqPx7dnrDqV3Lg+
     },
     "isValid": true,
     "reasons": [],
+  },
+  "validityInfo": {
+    "signed": 2023-09-26T17:11:18.000Z,
+    "validFrom": 2023-09-26T17:11:18.000Z,
+    "validUntil": 2073-09-26T17:11:18.000Z,
   },
 }
 `;

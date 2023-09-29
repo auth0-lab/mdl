@@ -85,8 +85,8 @@ export type DiagnosticInformation = {
     version: string,
     status: number,
     documents: number,
-    validityInfo: ValidityInfo,
   },
+  validityInfo: ValidityInfo,
   attributes: {
     ns: string,
     id: string,
