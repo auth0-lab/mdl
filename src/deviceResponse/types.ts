@@ -107,4 +107,9 @@ export type DiagnosticInformation = {
     isValid: boolean;
     reasons?: string[];
   }
+  dataIntegrity: {
+    disclosedAttributes: string;
+    isValid: boolean;
+    reasons?: string[];
+  }
 };

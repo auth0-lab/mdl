@@ -402,6 +402,15 @@ export class DeviceResponseVerifier {
         deviceKey = COSEKeyToJWK(deviceKeyInfo.deviceKey);
       }
     }
+    const disclosedAttributes = attributes.filter((attr) => attr.isValid).length;
+    const totalAttributes = Array.from(
+      document
+        .issuerSigned
+        .issuerAuth
+        .decodedPayload
+        .valueDigests
+        .entries(),
+    ).reduce((prev, [, digests]) => prev + digests.size, 0);
 
     return {
       general: {
@@ -445,10 +454,19 @@ export class DeviceResponseVerifier {
         alg: document.deviceSigned.deviceAuth.deviceSignature?.algName ??
           document.deviceSigned.deviceAuth.deviceMac?.algName,
         isValid: dr
-          .filter((check) => check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY')
+          .filter((check) => check.category === 'DEVICE_AUTH')
           .every((check) => check.status === 'PASSED'),
         reasons: dr
-          .filter((check) => (check.category === 'DEVICE_AUTH' || check.category === 'DATA_INTEGRITY') && check.status === 'FAILED')
+          .filter((check) => check.category === 'DEVICE_AUTH' && check.status === 'FAILED')
+          .map((check) => check.reason ?? check.check),
+      },
+      dataIntegrity: {
+        disclosedAttributes: `${disclosedAttributes} of ${totalAttributes}`,
+        isValid: dr
+          .filter((check) => check.category === 'DATA_INTEGRITY')
+          .every((check) => check.status === 'PASSED'),
+        reasons: dr
+          .filter((check) => check.category === 'DATA_INTEGRITY' && check.status === 'FAILED')
           .map((check) => check.reason ?? check.check),
       },
       attributes,
