@@ -94,6 +94,11 @@ exports[`diagnostic info should return the version 1`] = `
       "value": "tbd-us.ny.dmv",
     },
   ],
+  "dataIntegrity": {
+    "disclosedAttributes": "12 of 13",
+    "isValid": true,
+    "reasons": [],
+  },
   "deviceAttributes": [],
   "deviceKey": {
     "jwk": {

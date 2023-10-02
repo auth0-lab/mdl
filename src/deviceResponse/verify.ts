@@ -245,14 +245,14 @@ export class DeviceResponseVerifier {
       verifications.filter((v) => v.isValid).forEach((v) => {
         onCheck({
           status: 'PASSED',
-          check: `Issuer Auth must include a valid digest for ${ns}/${v.ev.elementIdentifier} element`,
+          check: `The value of ${ns}/${v.ev.elementIdentifier} must match the digest in the issuerAuth element`,
         });
       });
 
       verifications.filter((v) => !v.isValid).forEach((v) => {
         onCheck({
           status: 'FAILED',
-          check: `Issuer Auth must include a valid digest for ${ns}/${v.ev.elementIdentifier} element`,
+          check: `The value of ${ns}/${v.ev.elementIdentifier} must match the digest in the issuerAuth element`,
         });
       });
 

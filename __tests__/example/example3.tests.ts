@@ -18,7 +18,7 @@ describe('example 3: device response with partial and tampered disclosure', () =
     await expect(verifier.verify(deviceResponse, {
       ephemeralReaderKey,
       encodedSessionTranscript,
-    })).rejects.toThrow('Issuer Auth must include a valid digest for org.iso.18013.5.1/family_name element');
+    })).rejects.toThrow('The value of org.iso.18013.5.1/family_name must match the digest in the issuerAuth element');
   });
 
   it('should return the decoded response when skipping the error', async () => {

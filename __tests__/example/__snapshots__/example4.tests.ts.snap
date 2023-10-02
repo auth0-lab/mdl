@@ -94,6 +94,11 @@ exports[`example 4: device response with device attributes should get the right 
       "value": "tbd-us.ny.dmv",
     },
   ],
+  "dataIntegrity": {
+    "disclosedAttributes": "12 of 13",
+    "isValid": true,
+    "reasons": [],
+  },
   "deviceAttributes": [
     {
       "id": "version",
