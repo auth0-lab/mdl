@@ -1,11 +1,11 @@
-import { importJWK, KeyLike } from 'jose';
+import { KeyLike, importJWK } from 'jose';
 import { hex } from 'buffer-tag';
 import { parseDeviceResponse } from '../src';
 import { DeviceResponse } from '../src/deviceResponse/types';
 import { cborEncode } from '../src/cbor';
 
-describe('parser', () => {
-  describe.only('parseDeviceResponse', () => {
+describe('parser 2', () => {
+  describe('parseDeviceResponse', () => {
     let parsed: DeviceResponse;
     let publicKey: KeyLike | Uint8Array;
 
@@ -27,7 +27,7 @@ describe('parser', () => {
     });
 
     it('should match the snapshot', () => {
-      // expect(parsed).toMatchSnapshot();
+      expect(parsed).toMatchSnapshot();
     });
 
     it('should parse issuerSigned.issuerAuth[1] as map', () => {

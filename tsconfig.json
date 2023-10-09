@@ -6,7 +6,7 @@
       "esnext",
       "es2020",
     ],
-    "sourceMap": true,
+    "inlineSourceMap": true,
     "module": "commonjs",
     "target": "es2020",
     "skipLibCheck": true,
