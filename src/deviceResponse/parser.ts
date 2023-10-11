@@ -1,5 +1,5 @@
 import { compareVersions } from 'compare-versions';
-import { Mac0, Sign1 } from 'cose';
+import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
 import {
   DeviceAuth, DeviceResponse, NameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,

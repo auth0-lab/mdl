@@ -1,4 +1,4 @@
-import { Sign1 } from 'cose';
+import { Sign1 } from 'cose-kit';
 import { X509Certificate } from '@peculiar/x509';
 import { cborDecode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';

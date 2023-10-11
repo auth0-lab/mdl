@@ -2,7 +2,7 @@ import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
 import { importX509, JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
-import { COSEKeyToJWK, Mac0, Sign1, importDecodedCOSEKey } from 'cose';
+import { COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import crypto from 'uncrypto';
 import coseKeyMapToBuffer from '../cose/coseKey';
 
@@ -142,7 +142,7 @@ export class DeviceResponseVerifier {
     if (deviceAuth.deviceSignature) {
       // ECDSA/EdDSA authentication
       try {
-        const deviceKey = await importDecodedCOSEKey(options.deviceKeyCoseKey);
+        const deviceKey = await importCOSEKey(options.deviceKeyCoseKey);
 
         const ds = deviceAuth.deviceSignature;
 
