@@ -1,10 +1,10 @@
 import { KeyLike, importJWK } from 'jose';
 import { hex } from 'buffer-tag';
-import { parseDeviceResponse } from '../src';
-import { DeviceResponse } from '../src/deviceResponse/types';
-import { cborEncode } from '../src/cbor';
+import { parseDeviceResponse } from '../../src';
+import { DeviceResponse } from '../../src/deviceResponse/types';
+import { cborEncode } from '../../src/cbor';
 
-describe('parser', () => {
+describe('parse DeviceResponse Example 1', () => {
   describe('parseDeviceResponse', () => {
     let parsed: DeviceResponse;
 
@@ -41,7 +41,6 @@ describe('parser', () => {
         .issuerSigned
         .nameSpaces['eu.europa.ec.eudiw.pid.1']
         .find((e) => e.elementIdentifier === 'given_name')?.elementValue;
-      // expect(parsed).toMatchSnapshot();
       expect(givenName).toBe('Mascetti');
     });
 

@@ -2,7 +2,7 @@ import { compareVersions } from 'compare-versions';
 import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
 import {
-  DeviceAuth, DeviceResponse, NameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
+  DeviceAuth, DeviceResponse, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
@@ -43,7 +43,7 @@ const namespaceToArray = (
   return entries.map((di) => new IssuerSignedItem(issuerAuth, nameSpace, di));
 };
 
-const unwrapNamespace = (issuerAuth: IssuerAuth, namespace: RawNameSpaces): NameSpaces => {
+const unwrapNamespace = (issuerAuth: IssuerAuth, namespace: RawNameSpaces): IssuerNameSpaces => {
   return Array.from(namespace.entries()).reduce((prev, [nameSpace, entries]) => {
     const mappedNamespace = namespaceToArray(issuerAuth, nameSpace, entries);
     return {

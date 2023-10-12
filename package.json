@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "jest",
+    "test": "jest --verbose",
     "lint": "eslint ./src/**/*.ts",
     "build": "rm -rf lib ; tsc",
     "prepare": "npm run build"

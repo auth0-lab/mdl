@@ -11,7 +11,7 @@ export type ValidityInfo = {
   expectedUpdate?: Date,
 };
 
-export type NameSpaces = {
+export type IssuerNameSpaces = {
   [x: string]: IssuerSignedItem[];
 };
 
@@ -23,7 +23,7 @@ export type ValidatedIssuerNameSpaces = {
 
 export type IssuerSigned = {
   issuerAuth: IssuerAuth;
-  nameSpaces: NameSpaces;
+  nameSpaces: IssuerNameSpaces;
 };
 
 export type DeviceSignedItems = {
