@@ -15,7 +15,7 @@ import {
   DeviceAuth,
   MobileDocument,
   ValidatedIssuerNameSpaces,
-  DeviceResponse,
+  MDoc,
   DiagnosticInformation,
 } from './types';
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
@@ -306,7 +306,7 @@ export class DeviceResponseVerifier {
       disableCertificateChainValidation?: boolean,
       onCheck?: UserDefinedVerificationCallback
     } = {},
-  ): Promise<DeviceResponse> {
+  ): Promise<MDoc> {
     const onCheck = buildCallback(options.onCheck);
 
     const dr = await parse(encodedDeviceResponse);

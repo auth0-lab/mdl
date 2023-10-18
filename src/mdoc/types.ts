@@ -56,7 +56,7 @@ export type MobileDocument = {
   deviceSigned: DeviceSigned;
 };
 
-export type DeviceResponse = {
+export type MDoc = {
   documents: MobileDocument[];
   version: string;
   status: number;

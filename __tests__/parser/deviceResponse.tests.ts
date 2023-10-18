@@ -1,12 +1,12 @@
 import { KeyLike, importJWK } from 'jose';
 import { hex } from 'buffer-tag';
 import { parse } from '../../src';
-import { DeviceResponse } from '../../src/deviceResponse/types';
+import { MDoc } from '../../src/mdoc/types';
 import { cborEncode } from '../../src/cbor';
 
 describe('parse DeviceResponse Example 1', () => {
   describe('parse', () => {
-    let parsed: DeviceResponse;
+    let parsed: MDoc;
 
     let publicKey: KeyLike | Uint8Array;
 

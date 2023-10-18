@@ -2,7 +2,7 @@ import { compareVersions } from 'compare-versions';
 import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
 import {
-  DeviceAuth, DeviceResponse as MDoc, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
+  DeviceAuth, MDoc, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';

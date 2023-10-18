@@ -1,4 +1,6 @@
-export { DeviceResponseVerifier } from './deviceResponse/verify';
-export { parse } from './deviceResponse/parser';
+export { DeviceResponseVerifier } from './mdoc/verify';
+export { parse } from './mdoc/parser';
 export { DataItem } from './cbor/DataItem';
-export { DiagnosticInformation as DianosticInformation } from './deviceResponse/types';
+export { DiagnosticInformation as DianosticInformation } from './mdoc/types';
+
+export { MDoc } from './mdoc/types';
