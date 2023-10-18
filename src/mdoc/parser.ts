@@ -77,7 +77,6 @@ export const parse = async (
       doc.get('docType'),
     );
     return {
-      raw: doc,
       docType: doc.get('docType'),
       issuerSigned: doc.has('issuerSigned') ? {
         ...doc.get('issuerSigned'),
@@ -100,6 +99,5 @@ export const parse = async (
     documents: parsedDocuments,
     version,
     status,
-    raw: deviceResponse,
   };
 };

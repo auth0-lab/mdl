@@ -51,7 +51,6 @@ export type RawDeviceAuth = Map<'deviceMac' | 'deviceSignature', RawAuthElement>
 
 export type MobileDocument = {
   docType: string;
-  raw: Map<string, any>;
   issuerSigned: IssuerSigned;
   deviceSigned: DeviceSigned;
 };
@@ -60,7 +59,6 @@ export type MDoc = {
   documents: MobileDocument[];
   version: string;
   status: number;
-  raw: Map<string, any>;
 };
 
 export type DiagnosticInformation = {

@@ -2,7 +2,6 @@ import { KeyLike, importJWK } from 'jose';
 import { hex } from 'buffer-tag';
 import { parse } from '../../src';
 import { MDoc } from '../../src/mdoc/types';
-import { cborEncode } from '../../src/cbor';
 
 describe('parse DeviceResponse Example 2', () => {
   describe('parse', () => {
@@ -51,12 +50,6 @@ describe('parse DeviceResponse Example 2', () => {
     it('should decoded protected headers', () => {
       expect(parsed.documents[0].issuerSigned.issuerAuth.protectedHeaders)
         .toMatchSnapshot();
-    });
-
-    it('should contain the raw decode', () => {
-      expect(parsed).toHaveProperty('raw');
-      expect(cborEncode(parsed.raw).toString('hex'))
-        .toBe(encodedDeviceResponse.toString('hex'));
     });
   });
 });
