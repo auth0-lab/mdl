@@ -2,7 +2,7 @@ import { compareVersions } from 'compare-versions';
 import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
 import {
-  DeviceAuth, DeviceResponse, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
+  DeviceAuth, DeviceResponse as MDoc, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
@@ -53,12 +53,18 @@ const unwrapNamespace = (issuerAuth: IssuerAuth, namespace: RawNameSpaces): Issu
   }, {});
 };
 
+/**
+ * Parse an mdoc
+ *
+ * @param encoded - The cbor encoded mdoc
+ * @returns {Promise<MDoc>} - The parsed device response
+ */
 export const parse = async (
-  encodedDeviceResponse: Buffer | Uint8Array,
-): Promise<DeviceResponse> => {
+  encoded: Buffer | Uint8Array,
+): Promise<MDoc> => {
   let deviceResponse;
   try {
-    deviceResponse = cborDecode(encodedDeviceResponse) as Map<string, any>;
+    deviceResponse = cborDecode(encoded) as Map<string, any>;
   } catch (err) {
     throw new MDLParseError(`Unable to decode device response: ${err.message}`);
   }

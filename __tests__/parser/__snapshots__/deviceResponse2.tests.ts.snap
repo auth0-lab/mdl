@@ -1,12 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`parse DeviceResponse Example 2 parseDeviceResponse should decoded protected headers 1`] = `
+exports[`parse DeviceResponse Example 2 parse should decoded protected headers 1`] = `
 Map {
   1 => -7,
 }
 `;
 
-exports[`parse DeviceResponse Example 2 parseDeviceResponse should match the snapshot 1`] = `
+exports[`parse DeviceResponse Example 2 parse should match the snapshot 1`] = `
 {
   "documents": [
     {
