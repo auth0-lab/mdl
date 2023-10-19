@@ -31,7 +31,7 @@ const DIGEST_ALGS = {
   'SHA-512': 'sha512',
 } as { [key: string]: string };
 
-export class DeviceResponseVerifier {
+export class Verifier {
   /**
    *
    * @param issuersRootCertificates The IACA root certificates list of the supported issuers.

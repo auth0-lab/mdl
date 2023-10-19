@@ -1,5 +1,5 @@
 import { hex } from 'buffer-tag';
-import { DeviceResponseVerifier } from '../src';
+import { Verifier } from '../src';
 
 describe('verifier', () => {
   describe('parseDeviceResponse', () => {
@@ -10,7 +10,7 @@ describe('verifier', () => {
 
       const trustedCerts: string[] = [];
 
-      const verifier = new DeviceResponseVerifier(trustedCerts);
+      const verifier = new Verifier(trustedCerts);
       await expect(verifier.verify(encodedDeviceResponse, {
         ephemeralReaderKey, encodedSessionTranscript,
       })).rejects.toThrow('No valid certificate paths found');
@@ -23,7 +23,7 @@ describe('verifier', () => {
 
       const trustedCerts: string[] = [];
 
-      const verifier = new DeviceResponseVerifier(trustedCerts);
+      const verifier = new Verifier(trustedCerts);
       let called = false;
 
       try {
