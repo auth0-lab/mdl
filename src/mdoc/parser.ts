@@ -36,16 +36,15 @@ const parseDeviceAuthElement = (rawDeviceAuth: RawDeviceAuth): DeviceAuth => {
 };
 
 const namespaceToArray = (
-  issuerAuth: IssuerAuth,
   nameSpace: string,
   entries: RawIndexedDataItem,
 ): IssuerSignedItem[] => {
-  return entries.map((di) => new IssuerSignedItem(issuerAuth, nameSpace, di));
+  return entries.map((di) => new IssuerSignedItem(nameSpace, di));
 };
 
-const unwrapNamespace = (issuerAuth: IssuerAuth, namespace: RawNameSpaces): IssuerNameSpaces => {
+const unwrapNamespace = (namespace: RawNameSpaces): IssuerNameSpaces => {
   return Array.from(namespace.entries()).reduce((prev, [nameSpace, entries]) => {
-    const mappedNamespace = namespaceToArray(issuerAuth, nameSpace, entries);
+    const mappedNamespace = namespaceToArray(nameSpace, entries);
     return {
       ...prev,
       [nameSpace]: mappedNamespace,
@@ -81,7 +80,6 @@ export const parse = async (
       issuerSigned: doc.has('issuerSigned') ? {
         ...doc.get('issuerSigned'),
         nameSpaces: unwrapNamespace(
-          issuerAuth,
           doc.get('issuerSigned').get('nameSpaces'),
         ),
         issuerAuth,

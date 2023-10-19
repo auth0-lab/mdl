@@ -51,11 +51,12 @@ describe('example 2: valid device response with partial disclosure', () => {
       ephemeralReaderKey,
       encodedSessionTranscript,
     });
+    const { issuerAuth } = documents[0].issuerSigned;
 
     const allFieldsAreValid = (await Promise.all(documents[0]
       .issuerSigned
       .nameSpaces['org.iso.18013.5.1']
-      .map((field) => field.isValid()))).every(Boolean);
+      .map((field) => field.isValid(issuerAuth)))).every(Boolean);
 
     expect(allFieldsAreValid).toBe(true);
   });

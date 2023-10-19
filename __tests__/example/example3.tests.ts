@@ -30,10 +30,11 @@ describe('example 3: device response with partial and tampered disclosure', () =
         cb(v);
       },
     });
+    const { issuerAuth } = documents[0].issuerSigned;
     expect(await documents[0]
       .issuerSigned
       .nameSpaces['org.iso.18013.5.1']
-      .find((f) => f.elementIdentifier === 'family_name')?.isValid())
+      .find((f) => f.elementIdentifier === 'family_name')?.isValid(issuerAuth))
       .toBe(false);
   });
 

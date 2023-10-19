@@ -238,7 +238,7 @@ export class Verifier {
       });
 
       const verifications = await Promise.all(nameSpaces[ns].map(async (ev) => {
-        const isValid = await ev.isValid();
+        const isValid = await ev.isValid(issuerAuth);
         return { ev, ns, isValid };
       }));
 
@@ -266,7 +266,7 @@ export class Verifier {
           });
         } else {
           const isCountryInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_country')
-            .some((v) => !v.isValid || !v.ev.matchCertificate());
+            .some((v) => !v.isValid || !v.ev.matchCertificate(issuerAuth));
 
           onCheck({
             status: isCountryInvalid ? 'FAILED' : 'PASSED',
@@ -277,7 +277,7 @@ export class Verifier {
           });
 
           const isJurisdictionInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
-            .some((v) => !v.isValid || !v.ev.matchCertificate());
+            .some((v) => !v.isValid || !v.ev.matchCertificate(issuerAuth));
 
           onCheck({
             status: isJurisdictionInvalid ? 'FAILED' : 'PASSED',
@@ -367,20 +367,21 @@ export class Verifier {
     );
 
     const document = decoded.documents[0];
-    const issuerCert = document?.issuerSigned.issuerAuth.x5chain &&
-      document.issuerSigned.issuerAuth.x5chain.length > 0 &&
-      new X509Certificate(document.issuerSigned.issuerAuth.x5chain[0]);
+    const { issuerAuth } = document.issuerSigned;
+    const issuerCert = issuerAuth.x5chain &&
+      issuerAuth.x5chain.length > 0 &&
+      new X509Certificate(issuerAuth.x5chain[0]);
 
     const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
       return Promise.all(items.map(async (item) => {
-        const isValid = await item.isValid();
+        const isValid = await item.isValid(issuerAuth);
         return {
           ns,
           id: item.elementIdentifier,
           value: item.elementValue,
           isValid,
-          matchCertificate: item.matchCertificate(),
+          matchCertificate: item.matchCertificate(issuerAuth),
         };
       }));
     }))).flat();

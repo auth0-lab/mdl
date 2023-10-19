@@ -13,16 +13,13 @@ export type IssuerSignedDataItem = DataItem<Map<keyof IssuerSignedItem, unknown>
 
 export class IssuerSignedItem {
   private readonly dataItem: IssuerSignedDataItem;
-  #issuerAuth: IssuerAuth;
   #nameSpace: string;
   #isValid: boolean | undefined;
 
   constructor(
-    issuerAuth: IssuerAuth,
     nameSpace: string,
     dataItem: IssuerSignedDataItem,
   ) {
-    this.#issuerAuth = issuerAuth;
     this.#nameSpace = nameSpace;
     this.dataItem = dataItem;
   }
@@ -56,9 +53,10 @@ export class IssuerSignedItem {
     return result;
   }
 
-  public async isValid(): Promise<boolean> {
+  public async isValid({
+    decodedPayload: { valueDigests, digestAlgorithm },
+  }: IssuerAuth): Promise<boolean> {
     if (typeof this.#isValid !== 'undefined') { return this.#isValid; }
-    const { valueDigests, digestAlgorithm } = this.#issuerAuth.decodedPayload;
     if (!supportedDigestAlgorithms.includes(digestAlgorithm)) {
       this.#isValid = false;
       return false;
@@ -72,14 +70,14 @@ export class IssuerSignedItem {
     return this.#isValid;
   }
 
-  public matchCertificate(): boolean | undefined {
+  public matchCertificate({ countryName, stateOrProvince }: IssuerAuth): boolean | undefined {
     if (this.#nameSpace !== MDL_NAMESPACE) { return undefined; }
 
     if (this.elementIdentifier === 'issuing_country') {
-      return this.#issuerAuth.countryName === this.elementValue;
+      return countryName === this.elementValue;
     }
     if (this.elementIdentifier === 'issuing_jurisdiction') {
-      return this.#issuerAuth.stateOrProvince === this.elementValue;
+      return stateOrProvince === this.elementValue;
     }
     return undefined;
   }
