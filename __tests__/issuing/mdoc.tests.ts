@@ -17,7 +17,7 @@ describe('issuing an MDOC', () => {
         birth_date: '2007-03-25',
       }).sign({
         issuerPrivateKey,
-        issuerCertificatePem: ISSUER_CERTIFICATE,
+        issuerCertificate: ISSUER_CERTIFICATE,
         devicePublicKey,
       });
 

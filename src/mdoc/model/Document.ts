@@ -48,6 +48,13 @@ export class Document {
     // validate required fields, no extra fields, data types, etc...
   }
 
+  /**
+   * Add a namespace to an unsigned document.
+   *
+   * @param {string} namespace - The namespace to add.
+   * @param {Record<string, any>} values - The values to add to the namespace.
+   * @returns {Document} - The document
+   */
   addNameSpace(namespace: 'org.iso.18013.5.1' | string, values: Record<string, any>): Document {
     if (this.issuerSigned) {
       throw new Error('Cannot add namespace to an already signed document');
@@ -55,7 +62,7 @@ export class Document {
     if (namespace === DEFAULT_NS) {
       this.validateValues(values);
     }
-    this.#nameSpaces[namespace] = [];
+    this.#nameSpaces[namespace] = this.#nameSpaces[namespace] ?? [];
 
     const addAttribute = (key: string, value: any) => {
       const digestID = this.#nameSpaces[namespace].length;
@@ -75,9 +82,17 @@ export class Document {
     return this;
   }
 
+  /**
+   * Sign the document.
+   *
+   * @param params.issuerPrivateKey - The issuer's private key
+   * @param params.issuerCertificate - The issuer's certificate in pem format.
+   * @param params.devicePublicKey - The device's public key
+   * @returns {Promise<SignedDocument>} - The signed document
+   */
   async sign(params: {
     issuerPrivateKey: jose.KeyLike,
-    issuerCertificatePem: string,
+    issuerCertificate: string,
     devicePublicKey: jose.KeyLike | Uint8Array,
   }): Promise<SignedDocument> {
     if (this.issuerSigned) {
@@ -89,7 +104,7 @@ export class Document {
 
     const digestAlgo = 'SHA-256';
     const devicePublicKeyJwk = await jose.exportJWK(params.devicePublicKey);
-    const issuerPublicKeyBuffer = fromPEM(params.issuerCertificatePem);
+    const issuerPublicKeyBuffer = fromPEM(params.issuerCertificate);
     const utcNow = new Date();
     const expTime = new Date();
     expTime.setFullYear(expTime.getFullYear() + 4);

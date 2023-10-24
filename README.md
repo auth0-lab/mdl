@@ -75,7 +75,7 @@ import fs from "node:fs";
       birth_date: '2007-03-25',
     }).sign({
       issuerPrivateKey,
-      issuerCertificatePem: ISSUER_CERTIFICATE,
+      issuerCertificate,
       devicePublicKey,
     });
 
