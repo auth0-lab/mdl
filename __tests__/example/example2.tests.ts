@@ -53,10 +53,11 @@ describe('example 2: valid device response with partial disclosure', () => {
     });
     const { issuerAuth } = documents[0].issuerSigned;
 
+    const ns = 'org.iso.18013.5.1';
     const allFieldsAreValid = (await Promise.all(documents[0]
       .issuerSigned
-      .nameSpaces['org.iso.18013.5.1']
-      .map((field) => field.isValid(issuerAuth)))).every(Boolean);
+      .nameSpaces[ns]
+      .map((field) => field.isValid(ns, issuerAuth)))).every(Boolean);
 
     expect(allFieldsAreValid).toBe(true);
   });

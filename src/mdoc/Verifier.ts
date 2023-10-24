@@ -5,6 +5,8 @@ import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import crypto from 'uncrypto';
 import coseKeyMapToBuffer from '../cose/coseKey';
+import { Document } from './model/Document';
+import { MDoc } from './model/MDoc';
 
 import {
   calculateEphemeralMacKey,
@@ -13,9 +15,7 @@ import {
 
 import {
   DeviceAuth,
-  MobileDocument,
   ValidatedIssuerNameSpaces,
-  MDoc,
   DiagnosticInformation,
 } from './types';
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
@@ -98,14 +98,22 @@ export class Verifier {
     deviceAuth: DeviceAuth,
     options: {
       deviceKeyCoseKey: Map<number, number | Uint8Array> | undefined;
-      ephemeralPrivateKey?: Buffer;
-      sessionTranscriptBytes?: Buffer;
+      ephemeralPrivateKey?: Uint8Array;
+      sessionTranscriptBytes?: Uint8Array;
       docType: string;
       nameSpaces: Map<string, Map<string, any>>;
       onCheck: UserDefinedVerificationCallback;
     },
   ) {
     const onCheck = onCatCheck(options.onCheck, 'DEVICE_AUTH');
+
+    if (typeof deviceAuth === 'undefined') {
+      onCheck({
+        status: 'FAILED',
+        check: 'The document is not signed by the device.',
+      });
+      return;
+    }
 
     // Prevent cloning of the mdoc and mitigate man in the middle attacks
     if (!deviceAuth.deviceMac && !deviceAuth.deviceSignature) {
@@ -215,7 +223,7 @@ export class Verifier {
   }
 
   private async verifyData(
-    mdoc: MobileDocument,
+    mdoc: Document,
     onCheckG: UserDefinedVerificationCallback,
   ) {
     // Confirm that the mdoc data has not changed since issuance
@@ -238,7 +246,7 @@ export class Verifier {
       });
 
       const verifications = await Promise.all(nameSpaces[ns].map(async (ev) => {
-        const isValid = await ev.isValid(issuerAuth);
+        const isValid = await ev.isValid(ns, issuerAuth);
         return { ev, ns, isValid };
       }));
 
@@ -266,7 +274,7 @@ export class Verifier {
           });
         } else {
           const isCountryInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_country')
-            .some((v) => !v.isValid || !v.ev.matchCertificate(issuerAuth));
+            .some((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
 
           onCheck({
             status: isCountryInvalid ? 'FAILED' : 'PASSED',
@@ -277,7 +285,7 @@ export class Verifier {
           });
 
           const isJurisdictionInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
-            .some((v) => !v.isValid || !v.ev.matchCertificate(issuerAuth));
+            .some((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
 
           onCheck({
             status: isJurisdictionInvalid ? 'FAILED' : 'PASSED',
@@ -299,10 +307,10 @@ export class Verifier {
    * @param options.ephemeralReaderKey The private part of the ephemeral key used in the session where the DeviceResponse was obtained. This is only required if the DeviceResponse is using the MAC method for device authentication.
    */
   async verify(
-    encodedDeviceResponse: Buffer,
+    encodedDeviceResponse: Uint8Array,
     options: {
-      encodedSessionTranscript?: Buffer,
-      ephemeralReaderKey?: Buffer,
+      encodedSessionTranscript?: Uint8Array,
+      ephemeralReaderKey?: Uint8Array,
       disableCertificateChainValidation?: boolean,
       onCheck?: UserDefinedVerificationCallback
     } = {},
@@ -334,12 +342,12 @@ export class Verifier {
       const { deviceKeyInfo } = issuerAuth.decodedPayload;
       await this.verifyIssuerSignature(issuerAuth, options.disableCertificateChainValidation, onCheck);
 
-      await this.verifyDeviceSignature(document.deviceSigned.deviceAuth, {
+      await this.verifyDeviceSignature(document.deviceSigned?.deviceAuth, {
         deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
         ephemeralPrivateKey: options.ephemeralReaderKey,
         sessionTranscriptBytes: options.encodedSessionTranscript,
         docType: document.docType,
-        nameSpaces: document.deviceSigned.nameSpaces,
+        nameSpaces: document.deviceSigned?.nameSpaces,
         onCheck,
       });
 
@@ -375,13 +383,13 @@ export class Verifier {
     const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
       return Promise.all(items.map(async (item) => {
-        const isValid = await item.isValid(issuerAuth);
+        const isValid = await item.isValid(ns, issuerAuth);
         return {
           ns,
           id: item.elementIdentifier,
           value: item.elementValue,
           isValid,
-          matchCertificate: item.matchCertificate(issuerAuth),
+          matchCertificate: item.matchCertificate(ns, issuerAuth),
         };
       }));
     }))).flat();

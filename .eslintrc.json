@@ -57,7 +57,19 @@
     "max-classes-per-file": "off",
     "class-methods-use-this": "off",
     "object-curly-newline": "off",
-    "@typescript-eslint/no-unused-vars": "error"
+    "no-plusplus": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allowAfterThis": true
+      }
+    ]
   },
   "settings": {
     "import/resolver": {

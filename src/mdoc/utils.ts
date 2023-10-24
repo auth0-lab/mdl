@@ -89,11 +89,11 @@ export const calculateDeviceAutenticationBytes = (
   return result;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const pemToCert = (cert: string): string => {
-  const pem = /-----BEGIN (\w*)-----([^-]*)-----END (\w*)-----/g.exec(cert.toString());
-  if (pem && pem.length > 0) {
-    return pem[2].replace(/[\n|\r\n]/g, '');
-  }
-  return '';
-};
+export function getRandomBytes(len: number) {
+  return webcrypto.getRandomValues(new Uint8Array(len));
+}
+
+export function fromPEM(pem: string): Uint8Array {
+  const base64 = pem.replace(/-{5}(BEGIN|END) .*-{5}/gm, '').replace(/\s/gm, '');
+  return Buffer.from(base64, 'base64');
+}

@@ -1,8 +1,10 @@
 import { compareVersions } from 'compare-versions';
 import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
+import { Document } from './model/Document';
+import { MDoc } from './model/MDoc';
 import {
-  DeviceAuth, MDoc, IssuerNameSpaces, MobileDocument, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
+  DeviceAuth, IssuerNameSpaces, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './types';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
@@ -36,15 +38,14 @@ const parseDeviceAuthElement = (rawDeviceAuth: RawDeviceAuth): DeviceAuth => {
 };
 
 const namespaceToArray = (
-  nameSpace: string,
   entries: RawIndexedDataItem,
 ): IssuerSignedItem[] => {
-  return entries.map((di) => new IssuerSignedItem(nameSpace, di));
+  return entries.map((di) => new IssuerSignedItem(di));
 };
 
 const unwrapNamespace = (namespace: RawNameSpaces): IssuerNameSpaces => {
   return Array.from(namespace.entries()).reduce((prev, [nameSpace, entries]) => {
-    const mappedNamespace = namespaceToArray(nameSpace, entries);
+    const mappedNamespace = namespaceToArray(entries);
     return {
       ...prev,
       [nameSpace]: mappedNamespace,
@@ -70,32 +71,32 @@ export const parse = async (
 
   const { version, documents, status } = Object.fromEntries(deviceResponse);
 
-  const parsedDocuments = documents.map((doc: Map<string, any>): MobileDocument => {
+  const parsedDocuments: Document[] = documents.map((doc: Map<string, any>): Document => {
     const issuerAuth = parseIssuerAuthElement(
       doc.get('issuerSigned').get('issuerAuth'),
       doc.get('docType'),
     );
-    return {
-      docType: doc.get('docType'),
-      issuerSigned: doc.has('issuerSigned') ? {
-        ...doc.get('issuerSigned'),
-        nameSpaces: unwrapNamespace(
-          doc.get('issuerSigned').get('nameSpaces'),
-        ),
-        issuerAuth,
-      } : undefined,
-      // @ts-ignore
-      deviceSigned: doc.has('deviceSigned') ? {
-        ...doc.get('deviceSigned'),
-        nameSpaces: doc.get('deviceSigned').get('nameSpaces').data,
-        deviceAuth: parseDeviceAuthElement(doc.get('deviceSigned').get('deviceAuth')),
-      } : undefined,
-    };
+
+    const issuerSigned = doc.has('issuerSigned') ? {
+      ...doc.get('issuerSigned'),
+      nameSpaces: unwrapNamespace(
+        doc.get('issuerSigned').get('nameSpaces'),
+      ),
+      issuerAuth,
+    } : undefined;
+
+    const deviceSigned = doc.has('deviceSigned') ? {
+      ...doc.get('deviceSigned'),
+      nameSpaces: doc.get('deviceSigned').get('nameSpaces').data,
+      deviceAuth: parseDeviceAuthElement(doc.get('deviceSigned').get('deviceAuth')),
+    } : undefined;
+
+    return new Document(
+      doc.get('docType'),
+      issuerSigned,
+      deviceSigned,
+    );
   });
 
-  return {
-    documents: parsedDocuments,
-    version,
-    status,
-  };
+  return new MDoc(parsedDocuments, version, status);
 };

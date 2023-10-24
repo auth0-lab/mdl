@@ -49,17 +49,17 @@ export type RawIssuerAuth = ConstructorParameters<typeof Sign1>;
 
 export type RawDeviceAuth = Map<'deviceMac' | 'deviceSignature', RawAuthElement>;
 
-export type MobileDocument = {
-  docType: string;
-  issuerSigned: IssuerSigned;
-  deviceSigned?: DeviceSigned;
-};
+// export type MobileDocument = {
+//   docType: string;
+//   issuerSigned: IssuerSigned;
+//   deviceSigned?: DeviceSigned;
+// };
 
-export type MDoc = {
-  documents: MobileDocument[];
-  version: string;
-  status: number;
-};
+// export type MDoc = {
+//   documents: MobileDocument[];
+//   version: string;
+//   status: number;
+// };
 
 export type DiagnosticInformation = {
   general: {
