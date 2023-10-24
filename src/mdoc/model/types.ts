@@ -1,8 +1,8 @@
 // eslint-disable-next-line import/no-unresolved
 import { Mac0, Sign1 } from 'cose-kit';
 import { JWK } from 'jose';
-import IssuerAuth from './IssuerAuth';
-import { IssuerSignedDataItem, IssuerSignedItem } from './IssuerSignedItem';
+import IssuerAuth from '../IssuerAuth';
+import { IssuerSignedDataItem, IssuerSignedItem } from '../IssuerSignedItem';
 
 export type ValidityInfo = {
   signed: Date,

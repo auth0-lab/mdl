@@ -5,7 +5,7 @@ import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import crypto from 'uncrypto';
 import coseKeyMapToBuffer from '../cose/coseKey';
-import { Document } from './model/Document';
+import { Doc } from './model/Document';
 import { MDoc } from './model/MDoc';
 
 import {
@@ -17,7 +17,7 @@ import {
   DeviceAuth,
   ValidatedIssuerNameSpaces,
   DiagnosticInformation,
-} from './types';
+} from './model/types';
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
 
 import { parse } from './parser';
@@ -223,7 +223,7 @@ export class Verifier {
   }
 
   private async verifyData(
-    mdoc: Document,
+    mdoc: Doc,
     onCheckG: UserDefinedVerificationCallback,
   ) {
     // Confirm that the mdoc data has not changed since issuance

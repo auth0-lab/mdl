@@ -1,11 +1,11 @@
 import { compareVersions } from 'compare-versions';
 import { Mac0, Sign1 } from 'cose-kit';
 import { cborDecode } from '../cbor';
-import { Document } from './model/Document';
+import { Doc, Document } from './model/Document';
 import { MDoc } from './model/MDoc';
 import {
   DeviceAuth, IssuerNameSpaces, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
-} from './types';
+} from './model/types';
 import IssuerAuth from './IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
 import { MDLParseError } from './errors';
@@ -71,7 +71,7 @@ export const parse = async (
 
   const { version, documents, status } = Object.fromEntries(deviceResponse);
 
-  const parsedDocuments: Document[] = documents.map((doc: Map<string, any>): Document => {
+  const parsedDocuments: Document[] = documents.map((doc: Map<string, any>): Doc => {
     const issuerAuth = parseIssuerAuthElement(
       doc.get('issuerSigned').get('issuerAuth'),
       doc.get('docType'),
@@ -91,11 +91,11 @@ export const parse = async (
       deviceAuth: parseDeviceAuthElement(doc.get('deviceSigned').get('deviceAuth')),
     } : undefined;
 
-    return new Document(
-      doc.get('docType'),
+    return {
+      docType: doc.get('docType'),
       issuerSigned,
       deviceSigned,
-    );
+    };
   });
 
   return new MDoc(parsedDocuments, version, status);

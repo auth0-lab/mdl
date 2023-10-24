@@ -69,14 +69,19 @@ import fs from "node:fs";
 
 (async () => {
   const document = await new Document('org.iso.18013.5.1.mDL')
-    .addNameSpace('org.iso.18013.5.1', {
+    .addIssuerNameSpace('org.iso.18013.5.1', {
       family_name: 'Jones',
       given_name: 'Ava',
       birth_date: '2007-03-25',
-    }).sign({
+    })
+    .useDigestAlgorithm('SHA-256')
+    .addValidityInfo({
+      signed: new Date(),
+    })
+    .addDeviceKeyInfo({ devicePublicKey: publicKeyJWK })
+    .sign({
       issuerPrivateKey,
       issuerCertificate,
-      devicePublicKey,
     });
 
   const mdoc = new MDoc([document]).encode();
