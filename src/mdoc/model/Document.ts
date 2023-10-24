@@ -3,8 +3,8 @@ import { COSEKeyFromJWK, ProtectedHeader, UnprotectedHeaders } from 'cose-kit';
 import { fromPEM } from '../utils';
 import { DataItem, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
-import IssuerAuth from '../IssuerAuth';
-import { DeviceSigned, IssuerNameSpaces, IssuerSigned, ValidityInfo } from './types';
+import IssuerAuth from './IssuerAuth';
+import { DeviceSigned, DigestAlgorithm, IssuerNameSpaces, IssuerSigned, MSO, ValidityInfo } from './types';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
 
@@ -25,6 +25,9 @@ const addYears = (date: Date, years: number): Date => {
 
 export type DocType = 'org.iso.18013.5.1.mDL';
 
+/**
+ * The document interface.
+ */
 export interface Doc {
   docType: DocType;
   issuerSigned?: IssuerSigned;
@@ -52,8 +55,15 @@ export const prepare = (doc: Doc): Map<string, any> => {
   return docMap;
 };
 
+/**
+ * Represents an Issuer Signed Document.
+ */
 export type IssuerSignedDoc = Doc & { issuerSigned: IssuerSigned };
 
+/**
+ * The Document class.
+ * Use this class when building new documents.
+ */
 export class Document implements Doc {
   readonly docType: DocType;
   #issuerNameSpaces: IssuerNameSpaces = {};
@@ -66,7 +76,7 @@ export class Document implements Doc {
   };
   #issuerSigned?: IssuerSigned;
   #deviceSigned?: DeviceSigned;
-  #digestAlgorithm: string = 'SHA-256';
+  #digestAlgorithm: DigestAlgorithm = 'SHA-256';
 
   constructor(doc: Doc | DocType = 'org.iso.18013.5.1.mDL') {
     if (typeof doc === 'string') {
@@ -183,10 +193,10 @@ export class Document implements Doc {
    *
    * The default is SHA-256.
    *
-   * @param {'SHA-256' | 'SHA-384' | 'SHA-512'} digestAlgorithm - The digest algorithm to use.
+   * @param {DigestAlgorithm} digestAlgorithm - The digest algorithm to use.
    * @returns
    */
-  useDigestAlgorithm(digestAlgorithm: 'SHA-256' | 'SHA-384' | 'SHA-512'): Document {
+  useDigestAlgorithm(digestAlgorithm: DigestAlgorithm): Document {
     if (this.issuerSigned) {
       throw new Error('Cannot change digest algorithm of an already signed document');
     }
@@ -224,7 +234,7 @@ export class Document implements Doc {
       return [namespace, digestMap] as [string, Map<number, Uint8Array>];
     })));
 
-    const mso = {
+    const mso: MSO = {
       version: '1.0',
       digestAlgorithm: this.#digestAlgorithm,
       valueDigests,

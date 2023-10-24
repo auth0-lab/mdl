@@ -6,7 +6,7 @@ import { MDoc } from './model/MDoc';
 import {
   DeviceAuth, IssuerNameSpaces, RawDeviceAuth, RawIndexedDataItem, RawIssuerAuth, RawNameSpaces,
 } from './model/types';
-import IssuerAuth from './IssuerAuth';
+import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
 import { MDLParseError } from './errors';
 
@@ -59,9 +59,9 @@ const unwrapNamespace = (namespace: RawNameSpaces): IssuerNameSpaces => {
  * @param encoded - The cbor encoded mdoc
  * @returns {Promise<MDoc>} - The parsed device response
  */
-export const parse = async (
+export const parse = (
   encoded: Buffer | Uint8Array,
-): Promise<MDoc> => {
+): MDoc => {
   let deviceResponse;
   try {
     deviceResponse = cborDecode(encoded) as Map<string, any>;

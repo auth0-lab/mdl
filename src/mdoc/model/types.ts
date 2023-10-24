@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-unresolved
 import { Mac0, Sign1 } from 'cose-kit';
 import { JWK } from 'jose';
-import IssuerAuth from '../IssuerAuth';
+import IssuerAuth from './IssuerAuth';
 import { IssuerSignedDataItem, IssuerSignedItem } from '../IssuerSignedItem';
 
 export type ValidityInfo = {
@@ -49,17 +49,7 @@ export type RawIssuerAuth = ConstructorParameters<typeof Sign1>;
 
 export type RawDeviceAuth = Map<'deviceMac' | 'deviceSignature', RawAuthElement>;
 
-// export type MobileDocument = {
-//   docType: string;
-//   issuerSigned: IssuerSigned;
-//   deviceSigned?: DeviceSigned;
-// };
-
-// export type MDoc = {
-//   documents: MobileDocument[];
-//   version: string;
-//   status: number;
-// };
+export type DigestAlgorithm = 'SHA-256' | 'SHA-384' | 'SHA-512';
 
 export type DiagnosticInformation = {
   general: {
@@ -110,4 +100,23 @@ export type DiagnosticInformation = {
     isValid: boolean;
     reasons?: string[];
   }
+};
+
+export type MSO = {
+  digestAlgorithm: DigestAlgorithm;
+  docType: string;
+  version: string;
+
+  validityInfo: ValidityInfo;
+
+  valueDigests?: Map<string, Map<number, Uint8Array>>;
+
+  validityDigests?: {
+    [key: string]: Map<number, Uint8Array>;
+  };
+
+  deviceKeyInfo?: {
+    deviceKey: Uint8Array;
+    [key: string]: any;
+  };
 };

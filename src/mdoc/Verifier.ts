@@ -21,7 +21,7 @@ import {
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
 
 import { parse } from './parser';
-import IssuerAuth from './IssuerAuth';
+import IssuerAuth from './model/IssuerAuth';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -317,7 +317,7 @@ export class Verifier {
   ): Promise<MDoc> {
     const onCheck = buildCallback(options.onCheck);
 
-    const dr = await parse(encodedDeviceResponse);
+    const dr = parse(encodedDeviceResponse);
 
     onCheck({
       status: dr.version ? 'PASSED' : 'FAILED',

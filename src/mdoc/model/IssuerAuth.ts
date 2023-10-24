@@ -1,34 +1,15 @@
 import { Sign1 } from 'cose-kit';
 import { X509Certificate } from '@peculiar/x509';
-import { cborDecode } from '../cbor';
-import { DataItem } from '../cbor/DataItem';
-import { ValidityInfo } from './model/types';
-
-type Payload = {
-  digestAlgorithm: string;
-  docType: string;
-  version: string;
-
-  valueDigests: Map<string, Map<number, Uint8Array>>;
-
-  validityInfo: ValidityInfo;
-
-  validityDigests: {
-    [key: string]: Map<number, Uint8Array>;
-  };
-
-  deviceKeyInfo?: {
-    deviceKey: Map<number, Uint8Array | number>;
-    [key: string]: any;
-  };
-};
+import { cborDecode } from '../../cbor';
+import { DataItem } from '../../cbor/DataItem';
+import { MSO } from './types';
 
 /**
  * The IssuerAuth which is a COSE_Sign1 message
  * as defined in https://www.iana.org/assignments/cose/cose.xhtml#messages
  */
 export default class IssuerAuth extends Sign1 {
-  #decodedPayload: Payload;
+  #decodedPayload: MSO;
   #certificate: X509Certificate;
 
   constructor(
@@ -40,7 +21,7 @@ export default class IssuerAuth extends Sign1 {
     super(protectedHeader, unprotectedHeader, payload, signature);
   }
 
-  public get decodedPayload(): Payload {
+  public get decodedPayload(): MSO {
     if (this.#decodedPayload) { return this.#decodedPayload; }
     let decoded = cborDecode(this.payload);
     decoded = decoded instanceof DataItem ? decoded.data : decoded;
@@ -51,7 +32,7 @@ export default class IssuerAuth extends Sign1 {
         return [key, value instanceof Uint8Array ? cborDecode(value) : value];
       }));
     };
-    const result: Payload = {
+    const result: MSO = {
       ...decoded,
       validityInfo: mapValidityInfo(decoded.validityInfo),
       validityDigests: decoded.validityDigests ? Object.fromEntries(decoded.validityDigests) : decoded.validityDigests,

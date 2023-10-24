@@ -1,7 +1,7 @@
 import { subtle } from 'uncrypto';
 import { cborEncode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
-import IssuerAuth from './IssuerAuth';
+import IssuerAuth from './model/IssuerAuth';
 import { areEqual } from '../buffer_utils';
 import { getRandomBytes } from './utils';
 
