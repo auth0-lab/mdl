@@ -90,6 +90,15 @@ import fs from "node:fs";
 })();
 ```
 
+## Generating a device response
+
+```js
+  const deviceResponseMDoc = await DeviceResponse.from(mdoc)
+    .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+    .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+    .authenticateWithSignature(devicePrivateKey)
+    .generate();
+```
 
 ## License
 
