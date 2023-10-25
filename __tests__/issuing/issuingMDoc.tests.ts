@@ -80,7 +80,7 @@ describe('issuing an MDOC', () => {
     console.dir(parsedDocument.issuerSigned);
     expect(attrValues).toMatchInlineSnapshot(`
 {
-  "age_over_16": 16,
+  "age_over_16": true,
   "age_over_21": false,
   "birth_date": "2007-03-25",
   "family_name": "Jones",

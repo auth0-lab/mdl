@@ -76,7 +76,7 @@ export class Document {
       if (key === 'birth_date') {
         const ageInYears = getAgeInYears(value);
         addAttribute('age_over_21', ageInYears >= 21);
-        addAttribute(`age_over_${Math.floor(ageInYears)}`, Math.floor(ageInYears));
+        addAttribute(`age_over_${Math.floor(ageInYears)}`, true);
       }
     }
 

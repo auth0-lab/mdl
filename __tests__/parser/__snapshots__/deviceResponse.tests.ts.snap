@@ -550,6 +550,7 @@ Map {
 
 exports[`parse DeviceResponse Example 1 parse should match the snapshot 1`] = `
 MDoc {
+  "documentErrors": [],
   "documents": [
     IssuerSignedDocument {
       "docType": "eu.europa.ec.eudiw.pid.1",

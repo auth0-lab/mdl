@@ -8,6 +8,7 @@ Map {
 
 exports[`parse DeviceResponse Example 2 parse should match the snapshot 1`] = `
 MDoc {
+  "documentErrors": [],
   "documents": [
     IssuerSignedDocument {
       "docType": "org.iso.18013.5.1.mDL",

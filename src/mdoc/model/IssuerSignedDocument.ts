@@ -1,3 +1,4 @@
+import { DataItem } from '../../cbor/DataItem';
 import { DeviceSigned, DocType, IssuerSigned } from './types';
 
 /**
@@ -50,5 +51,19 @@ export class DeviceSignedDocument extends IssuerSignedDocument {
     public readonly deviceSigned: DeviceSigned,
   ) {
     super(docType, issuerSigned);
+  }
+
+  prepare(): Map<string, any> {
+    const doc = super.prepare();
+    doc.set('deviceSigned', {
+      ...this.deviceSigned,
+      nameSpaces: DataItem.fromData(this.deviceSigned.nameSpaces),
+      deviceAuth: {
+        ...this.deviceSigned.deviceAuth,
+        deviceSignature: this.deviceSigned.deviceAuth.deviceSignature?.getContentForEncoding(),
+        deviceMac: this.deviceSigned.deviceAuth.deviceMac?.getContentForEncoding(),
+      },
+    });
+    return doc;
   }
 }

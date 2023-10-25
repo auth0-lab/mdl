@@ -64,6 +64,7 @@
         "ignoreRestSiblings": true
       }
     ],
+    "no-continue": "off",
     "no-underscore-dangle": [
       "error",
       {
