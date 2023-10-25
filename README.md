@@ -97,6 +97,7 @@ import { DeviceResponse } from "@auth0/mdl";
 (() => {
   let issuerMDoc;
   let deviceResponseMDoc;
+
   // this is what the MDL issuer does to generate a credential:
   {
     const document = await new Document('org.iso.18013.5.1.mDL')
