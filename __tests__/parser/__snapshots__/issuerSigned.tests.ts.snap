@@ -3,8 +3,7 @@
 exports[`parse an issuer signed mdoc should match the snapshot 1`] = `
 MDoc {
   "documents": [
-    {
-      "deviceSigned": undefined,
+    IssuerSignedDocument {
       "docType": "org.iso.18013.5.1.mDL",
       "issuerSigned": {
         "issuerAuth": IssuerAuth {

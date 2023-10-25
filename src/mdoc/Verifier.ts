@@ -5,7 +5,6 @@ import { Buffer } from 'buffer';
 import { COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import crypto from 'uncrypto';
 import coseKeyMapToBuffer from '../cose/coseKey';
-import { Doc } from './model/Document';
 import { MDoc } from './model/MDoc';
 
 import {
@@ -14,7 +13,6 @@ import {
 } from './utils';
 
 import {
-  DeviceAuth,
   ValidatedIssuerNameSpaces,
   DiagnosticInformation,
 } from './model/types';
@@ -22,6 +20,7 @@ import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback,
 
 import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
+import { DeviceSignedDocument, IssuerSignedDocument } from './model/IssuerSignedDocument';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -95,25 +94,26 @@ export class Verifier {
   }
 
   private async verifyDeviceSignature(
-    deviceAuth: DeviceAuth,
+    document: IssuerSignedDocument | DeviceSignedDocument,
     options: {
-      deviceKeyCoseKey: Map<number, number | Uint8Array> | undefined;
       ephemeralPrivateKey?: Uint8Array;
       sessionTranscriptBytes?: Uint8Array;
-      docType: string;
-      nameSpaces: Map<string, Map<string, any>>;
-      onCheck: UserDefinedVerificationCallback;
+      onCheck: UserDefinedVerificationCallback,
     },
   ) {
     const onCheck = onCatCheck(options.onCheck, 'DEVICE_AUTH');
 
-    if (typeof deviceAuth === 'undefined') {
+    if (!(document instanceof DeviceSignedDocument)) {
       onCheck({
         status: 'FAILED',
         check: 'The document is not signed by the device.',
       });
       return;
     }
+    const { deviceAuth, nameSpaces } = document.deviceSigned;
+    const { docType } = document;
+    const { deviceKeyInfo } = document.issuerSigned.issuerAuth.decodedPayload;
+    const { deviceKey: deviceKeyCoseKey } = deviceKeyInfo || {};
 
     // Prevent cloning of the mdoc and mitigate man in the middle attacks
     if (!deviceAuth.deviceMac && !deviceAuth.deviceSignature) {
@@ -134,11 +134,11 @@ export class Verifier {
 
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
       options.sessionTranscriptBytes,
-      options.docType,
-      options.nameSpaces,
+      docType,
+      nameSpaces,
     );
 
-    if (!options.deviceKeyCoseKey) {
+    if (!deviceKeyCoseKey) {
       onCheck({
         status: 'FAILED',
         check: 'Issuer signature must contain the device key.',
@@ -150,7 +150,7 @@ export class Verifier {
     if (deviceAuth.deviceSignature) {
       // ECDSA/EdDSA authentication
       try {
-        const deviceKey = await importCOSEKey(options.deviceKeyCoseKey);
+        const deviceKey = await importCOSEKey(deviceKeyCoseKey);
 
         const ds = deviceAuth.deviceSignature;
 
@@ -195,6 +195,8 @@ export class Verifier {
     if (!options.ephemeralPrivateKey) { return; }
 
     try {
+      // TODO: check this
+      // @ts-ignore
       const deviceKey = coseKeyMapToBuffer(options.deviceKeyCoseKey);
       const ephemeralMacKey = await calculateEphemeralMacKey(
         deviceKey,
@@ -223,7 +225,7 @@ export class Verifier {
   }
 
   private async verifyData(
-    mdoc: Doc,
+    mdoc: IssuerSignedDocument,
     onCheckG: UserDefinedVerificationCallback,
   ) {
     // Confirm that the mdoc data has not changed since issuance
@@ -339,15 +341,11 @@ export class Verifier {
 
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
-      const { deviceKeyInfo } = issuerAuth.decodedPayload;
       await this.verifyIssuerSignature(issuerAuth, options.disableCertificateChainValidation, onCheck);
 
-      await this.verifyDeviceSignature(document.deviceSigned?.deviceAuth, {
-        deviceKeyCoseKey: deviceKeyInfo?.deviceKey,
+      await this.verifyDeviceSignature(document, {
         ephemeralPrivateKey: options.ephemeralReaderKey,
         sessionTranscriptBytes: options.encodedSessionTranscript,
-        docType: document.docType,
-        nameSpaces: document.deviceSigned?.nameSpaces,
         onCheck,
       });
 
@@ -394,15 +392,17 @@ export class Verifier {
       }));
     }))).flat();
 
-    const deviceAttributes = Array.from(document.deviceSigned.nameSpaces.entries()).map(([ns, items]) => {
-      return Array.from(items.entries()).map(([id, value]) => {
-        return {
-          ns,
-          id,
-          value,
-        };
-      });
-    }).flat();
+    const deviceAttributes = document instanceof DeviceSignedDocument ?
+      Array.from(document.deviceSigned.nameSpaces.entries()).map(([ns, items]) => {
+        return Array.from(items.entries()).map(([id, value]) => {
+          return {
+            ns,
+            id,
+            value,
+          };
+        });
+      }).flat() : undefined;
+
     let deviceKey: JWK;
 
     if (document?.issuerSigned.issuerAuth) {
@@ -459,7 +459,7 @@ export class Verifier {
       deviceKey: {
         jwk: deviceKey,
       },
-      deviceSignature: {
+      deviceSignature: document instanceof DeviceSignedDocument ? {
         alg: document.deviceSigned.deviceAuth.deviceSignature?.algName ??
           document.deviceSigned.deviceAuth.deviceMac?.algName,
         isValid: dr
@@ -468,7 +468,7 @@ export class Verifier {
         reasons: dr
           .filter((check) => check.category === 'DEVICE_AUTH' && check.status === 'FAILED')
           .map((check) => check.reason ?? check.check),
-      },
+      } : undefined,
       dataIntegrity: {
         disclosedAttributes: `${disclosedAttributes} of ${totalAttributes}`,
         isValid: dr

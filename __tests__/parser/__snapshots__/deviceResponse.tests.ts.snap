@@ -551,8 +551,7 @@ Map {
 exports[`parse DeviceResponse Example 1 parse should match the snapshot 1`] = `
 MDoc {
   "documents": [
-    {
-      "deviceSigned": undefined,
+    IssuerSignedDocument {
       "docType": "eu.europa.ec.eudiw.pid.1",
       "issuerSigned": {
         "issuerAuth": IssuerAuth {

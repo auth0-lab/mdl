@@ -116,7 +116,9 @@ export type MSO = {
   };
 
   deviceKeyInfo?: {
-    deviceKey: Uint8Array;
+    deviceKey: Map<number, number | Uint8Array>;
     [key: string]: any;
   };
 };
+
+export type DocType = 'org.iso.18013.5.1.mDL';

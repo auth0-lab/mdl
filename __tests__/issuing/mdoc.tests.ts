@@ -1,11 +1,11 @@
 import * as jose from 'jose';
-import { COSEKeyFromJWK } from 'cose-kit';
+import { COSEKeyToJWK } from 'cose-kit';
 import {
   MDoc,
-  IssuerSignedDoc,
   Document,
   Verifier,
   parse,
+  IssuerSignedDocument,
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_CERTIFICATE_PRIVATE_KEY } from './config';
 
@@ -13,7 +13,7 @@ const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
 describe('issuing an MDOC', () => {
   let encoded: Uint8Array;
-  let parsedDocument: IssuerSignedDoc;
+  let parsedDocument: IssuerSignedDocument;
 
   beforeAll(async () => {
     const issuerPrivateKey = await jose.importPKCS8(ISSUER_CERTIFICATE_PRIVATE_KEY, '');
@@ -70,19 +70,14 @@ describe('issuing an MDOC', () => {
   it('should include the device public key', () => {
     const { deviceKeyInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
     expect(deviceKeyInfo?.deviceKey).toBeDefined();
-    expect(
-      typeof deviceKeyInfo !== 'undefined' &&
-      Buffer.from(deviceKeyInfo.deviceKey).compare(COSEKeyFromJWK(publicKeyJWK)),
-    ).toBeDefined();
+    const actual = typeof deviceKeyInfo !== 'undefined' &&
+      COSEKeyToJWK(deviceKeyInfo.deviceKey);
+    expect(actual).toEqual(publicKeyJWK);
   });
 
   it('should include the namespace and attributes', () => {
-    const attrValues = Object.fromEntries(
-      parsedDocument.issuerSigned
-        .nameSpaces['org.iso.18013.5.1']
-        .map((a) => [a.elementIdentifier, a.elementValue]),
-    );
-
+    const attrValues = parsedDocument.getIssuerNameSpace('org.iso.18013.5.1');
+    console.dir(parsedDocument.issuerSigned);
     expect(attrValues).toMatchInlineSnapshot(`
 {
   "age_over_16": 16,
