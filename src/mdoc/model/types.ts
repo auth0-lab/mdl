@@ -122,3 +122,5 @@ export type MSO = {
 };
 
 export type DocType = 'org.iso.18013.5.1.mDL';
+
+export type MSOSupportedAlgs = 'ES256' | 'ES384' | 'ES512' | 'EdDSA';

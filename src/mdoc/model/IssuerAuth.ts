@@ -1,5 +1,6 @@
-import { Sign1 } from 'cose-kit';
+import { ProtectedHeaders, Sign1, UnprotectedHeaders } from 'cose-kit';
 import { X509Certificate } from '@peculiar/x509';
+import { KeyLike } from 'jose';
 import { cborDecode } from '../../cbor';
 import { DataItem } from '../../cbor/DataItem';
 import { MSO } from './types';
@@ -55,5 +56,20 @@ export default class IssuerAuth extends Sign1 {
 
   public get stateOrProvince() {
     return this.certificate?.issuerName.getField('ST')[0];
+  }
+
+  static async sign(
+    protectedHeaders: ProtectedHeaders,
+    unprotectedHeaders: UnprotectedHeaders | undefined,
+    payload: Uint8Array,
+    key: KeyLike | Uint8Array,
+  ): Promise<IssuerAuth> {
+    const sign1 = await Sign1.sign(protectedHeaders, unprotectedHeaders, payload, key);
+    return new IssuerAuth(
+      sign1.protectedHeaders,
+      sign1.unprotectedHeaders,
+      sign1.payload,
+      sign1.signature,
+    );
   }
 }

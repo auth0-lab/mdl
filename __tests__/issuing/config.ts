@@ -1,5 +1,6 @@
-//  All the keys here are randomly generated for the purpose of this test.
+import { JWK } from 'jose';
 
+//  All the keys here are randomly generated for the purpose of this test.
 export const DEVICE_JWK = {
   kty: 'EC',
   x: 'iBh5ynojixm_D0wfjADpouGbp6b3Pq6SuFHU3htQhVk',
@@ -23,10 +24,19 @@ PQQDAgNIADBFAiAJ/Qyrl7A+ePZOdNfc7ohmjEdqCvxaos6//gfTvncuqQIhANo4
 q8mKCA9J8k/+zh//yKbN1bLAtdqPx7dnrDqV3Lg+
 -----END CERTIFICATE-----`;
 
-export const ISSUER_CERTIFICATE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+export const ISSUER_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
 MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCjo+vMGbV0J9LCokdb
 oNWqYk4JBIgCiysI99sUkMw2ng==
 -----END PRIVATE KEY-----`;
+
+export const ISSUER_PRIVATE_KEY_JWK: JWK = {
+  kty: 'EC',
+  kid: '1234',
+  x: 'iTwtg0eQbcbNabf2Nq9L_VM_lhhPCq2s0Qgw2kRx29s',
+  y: 'YKwXDRz8U0-uLZ3NSI93R_35eNkl6jHp6Qg8OCup7VM',
+  crv: 'P-256',
+  d: 'o6PrzBm1dCfSwqJHW6DVqmJOCQSIAosrCPfbFJDMNp4',
+};
 
 export const PRESENTATION_DEFINITION_1 = {
   id: 'mdl-test-all-data',

@@ -1,10 +1,10 @@
 import * as jose from 'jose';
-import { COSEKeyFromJWK, ProtectedHeader, UnprotectedHeaders } from 'cose-kit';
+import { COSEKeyFromJWK, COSEKeyToJWK, ProtectedHeaders, UnprotectedHeaders } from 'cose-kit';
 import { fromPEM } from '../utils';
 import { DataItem, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import IssuerAuth from './IssuerAuth';
-import { DigestAlgorithm, DocType, IssuerNameSpaces, MSO, ValidityInfo } from './types';
+import { DigestAlgorithm, DocType, IssuerNameSpaces, MSO, MSOSupportedAlgs, ValidityInfo } from './types';
 import { IssuerSignedDocument } from './IssuerSignedDocument';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
@@ -155,20 +155,32 @@ export class Document {
   /**
    * Generate the issuer signature for the document.
    *
-   * @param params.issuerPrivateKey - The issuer's private key
-   * @param params.issuerCertificate - The issuer's certificate in pem format.
-   * @param params.devicePublicKey - The device's public key
+   * @param {Object} params - The parameters object
+   * @param {jose.JWK | Uint8Array} params.issuerPrivateKey - The issuer's private key either in JWK format or COSE_KEY format as buffer.
+   * @param {string | Uint8Array} params.issuerCertificate - The issuer's certificate in pem format or as a buffer.
+   * @param {MSOSupportedAlgs} params.alg - The algorhitm used for the MSO signature.
+   * @param {string | Uint8Array} [params.kid] - The key id of the issuer's private key. default: issuerPrivateKey.kid
    * @returns {Promise<IssuerSignedDoc>} - The signed document
    */
   async sign(params: {
-    issuerPrivateKey: jose.KeyLike,
-    issuerCertificate: string,
+    issuerPrivateKey: jose.JWK | Uint8Array,
+    issuerCertificate: string | Uint8Array,
+    alg: MSOSupportedAlgs,
+    kid?: string | Uint8Array,
   }): Promise<IssuerSignedDocument> {
     if (!this.#issuerNameSpaces) {
       throw new Error('No namespaces added');
     }
 
-    const issuerPublicKeyBuffer = fromPEM(params.issuerCertificate);
+    const issuerPublicKeyBuffer = typeof params.issuerCertificate === 'string' ?
+      fromPEM(params.issuerCertificate) :
+      params.issuerCertificate;
+
+    const issuerPrivateKeyJWK = params.issuerPrivateKey instanceof Uint8Array ?
+      COSEKeyToJWK(params.issuerPrivateKey) :
+      params.issuerPrivateKey;
+
+    const issuerPrivateKey = await jose.importJWK(issuerPrivateKeyJWK);
 
     const valueDigests = new Map(await Promise.all(Object.entries(this.#issuerNameSpaces).map(async ([namespace, items]) => {
       const digestMap = new Map<number, Uint8Array>();
@@ -189,9 +201,18 @@ export class Document {
     };
 
     const payload = cborEncode(DataItem.fromData(mso));
-    const protectedHeader: ProtectedHeader = { alg: 'ES256' };
-    const unprotectedHeader: UnprotectedHeaders = { kid: '11', x5chain: [issuerPublicKeyBuffer] };
-    const issuerAuth = await IssuerAuth.sign(protectedHeader, unprotectedHeader, payload, params.issuerPrivateKey) as IssuerAuth;
+    const protectedHeader: ProtectedHeaders = { alg: params.alg };
+    const unprotectedHeader: UnprotectedHeaders = {
+      kid: params.kid ?? issuerPrivateKeyJWK.kid,
+      x5chain: [issuerPublicKeyBuffer],
+    };
+
+    const issuerAuth = await IssuerAuth.sign(
+      protectedHeader,
+      unprotectedHeader,
+      payload,
+      issuerPrivateKey,
+    );
 
     const issuerSigned = {
       issuerAuth,

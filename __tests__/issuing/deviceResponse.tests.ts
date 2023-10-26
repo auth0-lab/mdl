@@ -8,7 +8,7 @@ import {
   IssuerSignedDocument,
   DeviceResponse,
 } from '../../src';
-import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_CERTIFICATE_PRIVATE_KEY, PRESENTATION_DEFINITION_1 } from './config';
+import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
@@ -29,7 +29,7 @@ describe('issuing a device response', () => {
   let encodedSessionTranscript: Buffer;
 
   beforeAll(async () => {
-    const issuerPrivateKey = await jose.importPKCS8(ISSUER_CERTIFICATE_PRIVATE_KEY, '');
+    const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
 
     // this is the ISSUER side
     {
@@ -74,6 +74,7 @@ describe('issuing a device response', () => {
         .sign({
           issuerPrivateKey,
           issuerCertificate: ISSUER_CERTIFICATE,
+          alg: 'ES256',
         });
 
       mdoc = new MDoc([document]);

@@ -7,7 +7,7 @@ import {
   parse,
   IssuerSignedDocument,
 } from '../../src';
-import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_CERTIFICATE_PRIVATE_KEY } from './config';
+import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK } from './config';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -16,7 +16,7 @@ describe('issuing an MDOC', () => {
   let parsedDocument: IssuerSignedDocument;
 
   beforeAll(async () => {
-    const issuerPrivateKey = await jose.importPKCS8(ISSUER_CERTIFICATE_PRIVATE_KEY, '');
+    const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
 
     const document = await new Document('org.iso.18013.5.1.mDL')
       .addIssuerNameSpace('org.iso.18013.5.1', {
@@ -33,6 +33,7 @@ describe('issuing an MDOC', () => {
       .sign({
         issuerPrivateKey,
         issuerCertificate: ISSUER_CERTIFICATE,
+        alg: 'ES256',
       });
 
     const mdoc = new MDoc([document]);
@@ -77,7 +78,6 @@ describe('issuing an MDOC', () => {
 
   it('should include the namespace and attributes', () => {
     const attrValues = parsedDocument.getIssuerNameSpace('org.iso.18013.5.1');
-    console.dir(parsedDocument.issuerSigned);
     expect(attrValues).toMatchInlineSnapshot(`
 {
   "age_over_16": true,
