@@ -114,6 +114,7 @@ import { DeviceResponse } from "@auth0/mdl";
       .sign({
         issuerPrivateKey,
         issuerCertificate,
+        alg: 'ES256',
       });
     issuerMDoc = new MDoc([document]).encode();
   }
