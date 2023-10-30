@@ -1,5 +1,4 @@
-import { DataItem } from '../../cbor/DataItem';
-import { DeviceSigned, DocType, IssuerSigned } from './types';
+import { DocType, IssuerSigned } from './types';
 
 /**
  * Represents an issuer signed document.
@@ -41,39 +40,5 @@ export class IssuerSignedDocument {
     return Object.fromEntries(
       nameSpace.map((item) => [item.elementIdentifier, item.elementValue]),
     );
-  }
-}
-
-export class DeviceSignedDocument extends IssuerSignedDocument {
-  constructor(
-    docType: DocType,
-    issuerSigned: IssuerSigned,
-    public readonly deviceSigned: DeviceSigned,
-  ) {
-    super(docType, issuerSigned);
-  }
-
-  prepare(): Map<string, any> {
-    const doc = super.prepare();
-    doc.set('deviceSigned', {
-      ...this.deviceSigned,
-      nameSpaces: DataItem.fromData(this.deviceSigned.nameSpaces),
-      deviceAuth: {
-        ...this.deviceSigned.deviceAuth,
-        deviceSignature: this.deviceSigned.deviceAuth.deviceSignature?.getContentForEncoding(),
-        deviceMac: this.deviceSigned.deviceAuth.deviceMac?.getContentForEncoding(),
-      },
-    });
-    return doc;
-  }
-
-  /**
-   * Helper method to get the values in a namespace as a JS object.
-   *
-   * @param {string} namespace - The namespace to add.
-   * @returns {Record<string, any>} - The values in the namespace as an object
-   */
-  getDeviceNameSpace(namespace: string): Record<string, any> {
-    return this.deviceSigned.nameSpaces[namespace];
   }
 }

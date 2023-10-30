@@ -8,7 +8,8 @@ import {
 import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedItem } from './IssuerSignedItem';
 import { MDLParseError } from './errors';
-import { DeviceSignedDocument, IssuerSignedDocument } from './model/IssuerSignedDocument';
+import { IssuerSignedDocument } from './model/IssuerSignedDocument';
+import { DeviceSignedDocument } from './model/DeviceSignedDocument';
 
 const parseIssuerAuthElement = (
   rawIssuerAuth: RawIssuerAuth,

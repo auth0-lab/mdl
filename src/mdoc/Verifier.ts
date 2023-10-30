@@ -19,7 +19,8 @@ import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback,
 
 import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
-import { DeviceSignedDocument, IssuerSignedDocument } from './model/IssuerSignedDocument';
+import { IssuerSignedDocument } from './model/IssuerSignedDocument';
+import { DeviceSignedDocument } from './model/DeviceSignedDocument';
 import COSEKeyToRAW from '../cose/coseKey';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';

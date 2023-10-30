@@ -3,11 +3,12 @@ import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-k
 import { InputDescriptor, PresentationDefinition } from './PresentationDefinition';
 import { MDoc } from './MDoc';
 import { DeviceAuth, DeviceSigned, MacSupportedAlgs, SupportedAlgs } from './types';
-import { DeviceSignedDocument, IssuerSignedDocument } from './IssuerSignedDocument';
+import { IssuerSignedDocument } from './IssuerSignedDocument';
+import { DeviceSignedDocument } from './DeviceSignedDocument';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import { parse } from '../parser';
 import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey } from '../utils';
-import { DataItem, cborEncode, cborDecode } from '../../cbor';
+import { DataItem, cborEncode } from '../../cbor';
 import COSEKeyToRAW from '../../cose/coseKey';
 
 const DOC_TYPE = 'org.iso.18013.5.1.mDL';
