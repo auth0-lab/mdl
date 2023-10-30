@@ -29,7 +29,7 @@ describe('issuing an MDOC', () => {
         signed: new Date('2023-10-24'),
         validUntil: new Date('2050-10-24'),
       })
-      .addDeviceKeyInfo({ devicePublicKey: publicKeyJWK })
+      .addDeviceKeyInfo({ deviceKey: publicKeyJWK })
       .sign({
         issuerPrivateKey,
         issuerCertificate: ISSUER_CERTIFICATE,

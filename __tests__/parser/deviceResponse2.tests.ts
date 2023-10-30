@@ -1,7 +1,6 @@
 import { KeyLike, importJWK } from 'jose';
 import { hex } from 'buffer-tag';
-import { parse } from '../../src';
-import { MDoc } from '../../src/mdoc/types';
+import { parse, MDoc } from '../../src';
 
 describe('parse DeviceResponse Example 2', () => {
   describe('parse', () => {

@@ -2,9 +2,8 @@ import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
 import { importX509, JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
-import { COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
+import { COSEKeyToJWK, Sign1, importCOSEKey } from 'cose-kit';
 import crypto from 'uncrypto';
-import coseKeyMapToBuffer from '../cose/coseKey';
 import { MDoc } from './model/MDoc';
 
 import {
@@ -21,6 +20,7 @@ import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback,
 import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
 import { DeviceSignedDocument, IssuerSignedDocument } from './model/IssuerSignedDocument';
+import COSEKeyToRAW from '../cose/coseKey';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -148,10 +148,10 @@ export class Verifier {
     }
 
     if (deviceAuth.deviceSignature) {
+      const deviceKey = await importCOSEKey(deviceKeyCoseKey);
+
       // ECDSA/EdDSA authentication
       try {
-        const deviceKey = await importCOSEKey(deviceKeyCoseKey);
-
         const ds = deviceAuth.deviceSignature;
 
         const verificationResult = await new Sign1(
@@ -195,21 +195,18 @@ export class Verifier {
     if (!options.ephemeralPrivateKey) { return; }
 
     try {
-      // TODO: check this
-      // @ts-ignore
-      const deviceKey = coseKeyMapToBuffer(options.deviceKeyCoseKey);
+      const deviceKeyRaw = COSEKeyToRAW(deviceKeyCoseKey);
       const ephemeralMacKey = await calculateEphemeralMacKey(
-        deviceKey,
         options.ephemeralPrivateKey,
+        deviceKeyRaw,
         options.sessionTranscriptBytes,
       );
 
-      const isValid = await Mac0.create(
-        { alg: 'HS256' },
-        {},
-        deviceAuthenticationBytes,
+      const isValid = await deviceAuth.deviceMac.verify(
         ephemeralMacKey,
-      ).then((mac) => deviceAuth.deviceMac && mac.areEqual(deviceAuth.deviceMac));
+        undefined,
+        deviceAuthenticationBytes,
+      );
 
       onCheck({
         status: isValid ? 'PASSED' : 'FAILED',

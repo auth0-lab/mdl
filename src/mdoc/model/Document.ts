@@ -1,10 +1,10 @@
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, ProtectedHeaders, UnprotectedHeaders } from 'cose-kit';
 import { fromPEM } from '../utils';
-import { DataItem, cborEncode } from '../../cbor';
+import { DataItem, cborDecode, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import IssuerAuth from './IssuerAuth';
-import { DigestAlgorithm, DocType, IssuerNameSpaces, MSO, SupportedAlgs, ValidityInfo } from './types';
+import { DeviceKeyInfo, DigestAlgorithm, DocType, IssuerNameSpaces, MSO, SupportedAlgs, ValidityInfo } from './types';
 import { IssuerSignedDocument } from './IssuerSignedDocument';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
@@ -32,7 +32,7 @@ const addYears = (date: Date, years: number): Date => {
 export class Document {
   readonly docType: DocType;
   #issuerNameSpaces: IssuerNameSpaces = {};
-  #deviceKeyInfo: any;
+  #deviceKeyInfo: DeviceKeyInfo;
   #validityInfo: ValidityInfo = {
     signed: new Date(),
     validFrom: new Date(),
@@ -103,14 +103,15 @@ export class Document {
    * @param params
    * @param {jose.JWK | Uint8Array} params.devicePublicKey - The device public key.
    */
-  addDeviceKeyInfo({ devicePublicKey }: { devicePublicKey: jose.JWK | Uint8Array }): Document {
-    const deviceKey =
-      devicePublicKey instanceof Uint8Array ?
-        devicePublicKey :
-        COSEKeyFromJWK(devicePublicKey);
+  addDeviceKeyInfo({ deviceKey }: { deviceKey: jose.JWK | Uint8Array }): Document {
+    const deviceKeyCOSEKey =
+      deviceKey instanceof Uint8Array ?
+        deviceKey :
+        COSEKeyFromJWK(deviceKey);
+    const decodedCoseKey = cborDecode(deviceKeyCOSEKey);
 
     this.#deviceKeyInfo = {
-      deviceKey,
+      deviceKey: decodedCoseKey,
     };
 
     return this;

@@ -13,7 +13,7 @@
         "--coverage",
         "false",
         "-t",
-        "issuing an MDOC",
+        "verifier",
       ],
       "console": "integratedTerminal",
       "runtimeExecutable": "/usr/local/opt/nvm/versions/node/v18.15.0/bin/node",

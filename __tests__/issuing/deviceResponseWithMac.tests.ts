@@ -1,4 +1,5 @@
 import * as jose from 'jose';
+import { COSEKeyFromJWK } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -9,6 +10,7 @@ import {
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
 import { DeviceSignedDocument } from '../../src/mdoc/model/IssuerSignedDocument';
+import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -20,11 +22,13 @@ const getSessionTranscriptBytes = ({ client_id: clientId, response_uri: response
   ]),
 );
 
-describe('issuing a device response', () => {
+describe('issuing a device response with MAC authentication', () => {
   let encoded: Uint8Array;
   let parsedDocument: DeviceSignedDocument;
   let mdoc: MDoc;
   let encodedSessionTranscript: Buffer;
+  let ephemeralPrivateKey: Uint8Array;
+  let ephemeralPublicKey: Uint8Array;
 
   beforeAll(async () => {
     const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
@@ -80,16 +84,21 @@ describe('issuing a device response', () => {
 
     //  This is the Device side
     {
+      // generate an ephemeral key
+      const ephemeralKey = await jose.exportJWK((await jose.generateKeyPair('ES256')).privateKey);
+      ephemeralPrivateKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKey));
+      const { d: _1, ...ephemeralKeyPublic } = ephemeralKey;
+      ephemeralPublicKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKeyPublic));
+
       const verifierGeneratedNonce = 'abcdefg';
       const mdocGeneratedNonce = '123456';
       const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
       const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
-      const devicePrivateKey = DEVICE_JWK;
 
       const deviceResponseMDoc = await DeviceResponse.from(mdoc)
         .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
         .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-        .authenticateWithSignature(devicePrivateKey, 'ES256')
+        .authenticateWithMAC(DEVICE_JWK, ephemeralPublicKey, 'HS256')
         .addDeviceNameSpace('com.foobar-device', { test: 1234 })
         .sign();
 
@@ -108,6 +117,7 @@ describe('issuing a device response', () => {
   it('should be verifiable', async () => {
     const verifier = new Verifier([ISSUER_CERTIFICATE]);
     await verifier.verify(encoded, {
+      ephemeralReaderKey: ephemeralPrivateKey,
       encodedSessionTranscript,
     });
   });

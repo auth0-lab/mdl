@@ -98,6 +98,11 @@ export type DiagnosticInformation = {
   }
 };
 
+export type DeviceKeyInfo = {
+  deviceKey: Map<number, number | Uint8Array>;
+  [key: string]: any;
+};
+
 export type MSO = {
   digestAlgorithm: DigestAlgorithm;
   docType: string;
@@ -111,12 +116,11 @@ export type MSO = {
     [key: string]: Map<number, Uint8Array>;
   };
 
-  deviceKeyInfo?: {
-    deviceKey: Map<number, number | Uint8Array>;
-    [key: string]: any;
-  };
+  deviceKeyInfo?: DeviceKeyInfo;
 };
 
 export type DocType = 'org.iso.18013.5.1.mDL';
 
 export type SupportedAlgs = 'ES256' | 'ES384' | 'ES512' | 'EdDSA';
+
+export type MacSupportedAlgs = 'HS256';
