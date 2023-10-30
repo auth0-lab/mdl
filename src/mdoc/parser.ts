@@ -43,7 +43,7 @@ const namespaceToArray = (
   return entries.map((di) => new IssuerSignedItem(di));
 };
 
-const unwrapNamespace = (namespace: RawNameSpaces): IssuerNameSpaces => {
+const mapIssuerNameSpaces = (namespace: RawNameSpaces): IssuerNameSpaces => {
   return Array.from(namespace.entries()).reduce((prev, [nameSpace, entries]) => {
     const mappedNamespace = namespaceToArray(entries);
     return {
@@ -51,6 +51,13 @@ const unwrapNamespace = (namespace: RawNameSpaces): IssuerNameSpaces => {
       [nameSpace]: mappedNamespace,
     };
   }, {});
+};
+
+const mapDeviceNameSpaces = (namespace: Map<string, Map<string, any>>) => {
+  const entries = Array.from(namespace.entries()).map(([ns, attrs]) => {
+    return [ns, Object.fromEntries(attrs.entries())];
+  });
+  return Object.fromEntries(entries);
 };
 
 /**
@@ -79,7 +86,7 @@ export const parse = (
 
     const issuerSigned = doc.has('issuerSigned') ? {
       ...doc.get('issuerSigned'),
-      nameSpaces: unwrapNamespace(
+      nameSpaces: mapIssuerNameSpaces(
         doc.get('issuerSigned').get('nameSpaces'),
       ),
       issuerAuth,
@@ -87,7 +94,7 @@ export const parse = (
 
     const deviceSigned = doc.has('deviceSigned') ? {
       ...doc.get('deviceSigned'),
-      nameSpaces: doc.get('deviceSigned').get('nameSpaces').data,
+      nameSpaces: mapDeviceNameSpaces(doc.get('deviceSigned').get('nameSpaces').data),
       deviceAuth: parseDeviceAuthElement(doc.get('deviceSigned').get('deviceAuth')),
     } : undefined;
 

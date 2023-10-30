@@ -1,26 +1,37 @@
 import * as jose from 'jose';
-import { Sign1 } from 'cose-kit';
+import { COSEKeyToJWK, Sign1 } from 'cose-kit';
 import { InputDescriptor, PresentationDefinition } from './PresentationDefinition';
 import { MDoc } from './MDoc';
-import { DeviceAuth, DeviceSigned } from './types';
+import { DeviceAuth, DeviceSigned, SupportedAlgs } from './types';
 import { DeviceSignedDocument, IssuerSignedDocument } from './IssuerSignedDocument';
 import { IssuerSignedItem } from '../IssuerSignedItem';
-import { DataItem, cborEncode } from '../../cbor';
 import { parse } from '../parser';
+import { calculateDeviceAutenticationBytes } from '../utils';
 
 const DOC_TYPE = 'org.iso.18013.5.1.mDL';
 
+/**
+ * A builder class for creating a device response.
+ */
 export class DeviceResponse {
   private mdoc: MDoc;
   private pd: PresentationDefinition;
   private handover: string[];
   private useMac = true;
-  private devicePrivateKey: jose.KeyLike;
+  private devicePrivateKey: jose.JWK;
   private readerPublicKey: jose.KeyLike;
   public deviceResponseCbor: Buffer;
-  public nameSpaces: Map<string, Map<string, any>> = new Map();
+  public nameSpaces: Record<string, Record<string, any>> = {};
+  private alg: SupportedAlgs;
 
-  public static from(mdoc: MDoc | Uint8Array) {
+  /**
+   * Create a DeviceResponse builder.
+   *
+   * @param {MDoc | Uint8Array} mdoc - The mdoc to use as a base for the device response.
+   *                                   It can be either a parsed MDoc or a CBOR encoded MDoc.
+   * @returns {DeviceResponse} - A DeviceResponse builder.
+   */
+  public static from(mdoc: MDoc | Uint8Array): DeviceResponse {
     if (mdoc instanceof Uint8Array) {
       return new DeviceResponse(parse(mdoc));
     }
@@ -31,28 +42,66 @@ export class DeviceResponse {
     this.mdoc = mdoc;
   }
 
-  public usingPresentationDefinition(pd: PresentationDefinition) {
+  /**
+   *
+   * @param pd - The presentation definition to use for the device response.
+   * @returns {DeviceResponse}
+   */
+  public usingPresentationDefinition(pd: PresentationDefinition): DeviceResponse {
     this.pd = pd;
     return this;
   }
 
-  public usingHandover(handover: string[]) {
+  /**
+   * Set the handover data to use for the device response.
+   *
+   * @param {string[]} handover - The handover data to use for the device response.
+   * @returns {DeviceResponse}
+   */
+  public usingHandover(handover: string[]): DeviceResponse {
     this.handover = handover;
     return this;
   }
 
-  public addDeviceNameSpace(nameSpace: string, data: Record<string, any>) {
-    this.nameSpaces.set(nameSpace, new Map(Object.entries(data)));
+  /**
+   * Add a name space to the device response.
+   *
+   * @param {string} nameSpace - The name space to add to the device response.
+   * @param {Record<string, any>} data - The data to add to the name space.
+   * @returns {DeviceResponse}
+   */
+  public addDeviceNameSpace(nameSpace: string, data: Record<string, any>): DeviceResponse {
+    this.nameSpaces[nameSpace] = data;
     return this;
   }
 
-  public authenticateWithSignature(devicePrivateKey: jose.KeyLike) {
-    this.devicePrivateKey = devicePrivateKey;
+  /**
+   * Set the device's private key to be used for signing the device response.
+   *
+   * @param  {jose.JWK | Uint8Array} devicePrivateKey - The device's private key either as a JWK or a COSEKey.
+   * @param  {SupportedAlgs} alg - The algorithm to use for signing the device response.
+   * @returns {DeviceResponse}
+   */
+  public authenticateWithSignature(
+    devicePrivateKey: jose.JWK | Uint8Array,
+    alg: SupportedAlgs,
+  ): DeviceResponse {
+    if (devicePrivateKey instanceof Uint8Array) {
+      this.devicePrivateKey = COSEKeyToJWK(devicePrivateKey);
+    } else {
+      this.devicePrivateKey = devicePrivateKey;
+    }
+    this.alg = alg;
     this.useMac = false;
     return this;
   }
 
-  public async generate(): Promise<MDoc> {
+  /**
+   * Sign the device response and return the MDoc.
+   *
+   * @returns {Promise<MDoc>} - The device response as an MDoc.
+   */
+  public async sign(): Promise<MDoc> {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
     if (!this.handover) throw new Error('Must provide handover data with .usingHandover()');
 
@@ -92,26 +141,22 @@ export class DeviceResponse {
         nameSpaces,
         issuerAuth: document.issuerSigned.issuerAuth,
       },
-      await this.getdeviceSigned(document.docType),
+      await this.getDeviceSigned(document.docType),
     );
   }
 
-  private async getdeviceSigned(docType: string): Promise<DeviceSigned> {
+  private async getDeviceSigned(docType: string): Promise<DeviceSigned> {
     const sessionTranscript = [
       null, // deviceEngagementBytes
       null, // eReaderKeyBytes,
       this.handover,
     ];
-    const nameSpaces = DataItem.fromData(this.nameSpaces);
 
-    const deviceAuthentication = [
-      'DeviceAuthentication',
+    const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
       sessionTranscript,
       docType,
-      nameSpaces,
-    ];
-
-    const deviceAuthenticationBytes = cborEncode(DataItem.fromData(deviceAuthentication));
+      this.nameSpaces,
+    );
 
     const deviceSigned: DeviceSigned = {
       nameSpaces: this.nameSpaces,
@@ -124,7 +169,7 @@ export class DeviceResponse {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async getDeviceAuthMac(data: Buffer): Promise<DeviceAuth> {
+  private async getDeviceAuthMac(data: Uint8Array): Promise<DeviceAuth> {
     throw new Error('not implemented');
     // if (!this.devicePrivateKey) throw new Error('Missing devicePrivateKey');
     // if (!this.readerPublicKey) throw new Error('Missing readerPublicKey');
@@ -147,16 +192,15 @@ export class DeviceResponse {
     // };
   }
 
-  private async getDeviceAuthSign(cborData: Buffer | Uint8Array): Promise<DeviceAuth> {
+  private async getDeviceAuthSign(cborData: Uint8Array): Promise<DeviceAuth> {
     if (!this.devicePrivateKey) throw new Error('Missing devicePrivateKey');
-
+    const key = await jose.importJWK(this.devicePrivateKey);
     const deviceSignature = await Sign1.sign(
-      { alg: 'ES256' },
-      { kid: '11' },
+      { alg: this.alg },
+      { kid: this.devicePrivateKey.kid },
       Buffer.from(cborData),
-      this.devicePrivateKey,
+      key,
     );
-
     return { deviceSignature };
   }
 
@@ -179,15 +223,15 @@ export class DeviceResponse {
     return nameSpaces;
   }
 
-  /**
-   * path looks like this: "$['org.iso.18013.5.1']['family_name']"
-   * the regex creates two groups with contents between "['" and "']"
-   * the second entry in each group contains the result without the "'[" or "']"
-   */
   private async prepareDigest(
     paths: string[],
     document: IssuerSignedDocument,
   ): Promise<{ nameSpace: string; digest: IssuerSignedItem } | null> {
+    /**
+     * path looks like this: "$['org.iso.18013.5.1']['family_name']"
+     * the regex creates two groups with contents between "['" and "']"
+     * the second entry in each group contains the result without the "'[" or "']"
+     */
     for (const path of paths) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const [[_1, nameSpace], [_2, elementIdentifier]] = [...path.matchAll(/\['(.*?)'\]/g)];

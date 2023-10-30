@@ -31,7 +31,7 @@ export class IssuerSignedDocument {
   }
 
   /**
-   * Get the values in a namespace.
+   * Helper method to get the values in a namespace as a JS object.
    *
    * @param {string} namespace - The namespace to add.
    * @returns {Record<string, any>} - The values in the namespace as an object
@@ -65,5 +65,15 @@ export class DeviceSignedDocument extends IssuerSignedDocument {
       },
     });
     return doc;
+  }
+
+  /**
+   * Helper method to get the values in a namespace as a JS object.
+   *
+   * @param {string} namespace - The namespace to add.
+   * @returns {Record<string, any>} - The values in the namespace as an object
+   */
+  getDeviceNameSpace(namespace: string): Record<string, any> {
+    return this.deviceSigned.nameSpaces[namespace];
   }
 }

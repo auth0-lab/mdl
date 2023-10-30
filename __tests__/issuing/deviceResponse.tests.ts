@@ -1,15 +1,14 @@
 import * as jose from 'jose';
-// import { COSEKeyToJWK } from 'cose-kit';
 import {
   MDoc,
   Document,
   Verifier,
   parse,
-  IssuerSignedDocument,
   DeviceResponse,
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
+import { DeviceSignedDocument } from '../../src/mdoc/model/IssuerSignedDocument';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -23,7 +22,7 @@ const getSessionTranscriptBytes = ({ client_id: clientId, response_uri: response
 
 describe('issuing a device response', () => {
   let encoded: Uint8Array;
-  let parsedDocument: IssuerSignedDocument;
+  let parsedDocument: DeviceSignedDocument;
   let mdoc: MDoc;
   let ephemeralReaderKey: Buffer;
   let encodedSessionTranscript: Buffer;
@@ -86,13 +85,14 @@ describe('issuing a device response', () => {
       const mdocGeneratedNonce = '123456';
       const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
       const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
-      const devicePrivateKey = await jose.importJWK(DEVICE_JWK);
+      const devicePrivateKey = DEVICE_JWK;
 
       const deviceResponseMDoc = await DeviceResponse.from(mdoc)
         .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
         .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-        .authenticateWithSignature(devicePrivateKey as jose.KeyLike)
-        .generate();
+        .authenticateWithSignature(devicePrivateKey, 'ES256')
+        .addDeviceNameSpace('com.foobar-device', { test: 1234 })
+        .sign();
 
       ephemeralReaderKey = Buffer.from('SKReader', 'utf8');
       encodedSessionTranscript = getSessionTranscriptBytes(
@@ -104,7 +104,7 @@ describe('issuing a device response', () => {
     }
 
     const parsedMDOC = parse(encoded);
-    [parsedDocument] = parsedMDOC.documents;
+    [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
   });
 
   it('should be verifiable', async () => {
@@ -123,30 +123,8 @@ describe('issuing a device response', () => {
     expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
   });
 
-  //   it('should use the correct digest alg', () => {
-  //     const { digestAlgorithm } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
-  //     expect(digestAlgorithm).toEqual('SHA-512');
-  //   });
-
-  //   it('should include the device public key', () => {
-  //     const { deviceKeyInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
-  //     expect(deviceKeyInfo?.deviceKey).toBeDefined();
-  //     const actual = typeof deviceKeyInfo !== 'undefined' &&
-  //       COSEKeyToJWK(deviceKeyInfo.deviceKey);
-  //     expect(actual).toEqual(publicKeyJWK);
-  //   });
-
-  //   it('should include the namespace and attributes', () => {
-  //     const attrValues = parsedDocument.getIssuerNameSpace('org.iso.18013.5.1');
-  //     console.dir(parsedDocument.issuerSigned);
-  //     expect(attrValues).toMatchInlineSnapshot(`
-  // {
-  //   "age_over_16": 16,
-  //   "age_over_21": false,
-  //   "birth_date": "2007-03-25",
-  //   "family_name": "Jones",
-  //   "given_name": "Ava",
-  // }
-  // `);
-  //   });
+  it('should contain the device namespaces', () => {
+    expect(parsedDocument.getDeviceNameSpace('com.foobar-device'))
+      .toEqual({ test: 1234 });
+  });
 });

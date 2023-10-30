@@ -4,7 +4,7 @@ import { fromPEM } from '../utils';
 import { DataItem, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import IssuerAuth from './IssuerAuth';
-import { DigestAlgorithm, DocType, IssuerNameSpaces, MSO, MSOSupportedAlgs, ValidityInfo } from './types';
+import { DigestAlgorithm, DocType, IssuerNameSpaces, MSO, SupportedAlgs, ValidityInfo } from './types';
 import { IssuerSignedDocument } from './IssuerSignedDocument';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
@@ -158,14 +158,14 @@ export class Document {
    * @param {Object} params - The parameters object
    * @param {jose.JWK | Uint8Array} params.issuerPrivateKey - The issuer's private key either in JWK format or COSE_KEY format as buffer.
    * @param {string | Uint8Array} params.issuerCertificate - The issuer's certificate in pem format or as a buffer.
-   * @param {MSOSupportedAlgs} params.alg - The algorhitm used for the MSO signature.
+   * @param {SupportedAlgs} params.alg - The algorhitm used for the MSO signature.
    * @param {string | Uint8Array} [params.kid] - The key id of the issuer's private key. default: issuerPrivateKey.kid
    * @returns {Promise<IssuerSignedDoc>} - The signed document
    */
   async sign(params: {
     issuerPrivateKey: jose.JWK | Uint8Array,
     issuerCertificate: string | Uint8Array,
-    alg: MSOSupportedAlgs,
+    alg: SupportedAlgs,
     kid?: string | Uint8Array,
   }): Promise<IssuerSignedDocument> {
     if (!this.#issuerNameSpaces) {

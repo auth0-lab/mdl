@@ -26,17 +26,13 @@ export type IssuerSigned = {
   nameSpaces: IssuerNameSpaces;
 };
 
-export type DeviceSignedItems = {
-  [x: string]: unknown;
-};
-
 export type DeviceAuth =
   | { deviceMac: Mac0 } & { deviceSignature?: never }
   | ({ deviceMac?: never } & { deviceSignature: Sign1 });
 
 export type DeviceSigned = {
   deviceAuth: DeviceAuth;
-  nameSpaces: Map<string, Map<string, any>>;
+  nameSpaces: Record<string, Record<string, any>>;
 };
 
 export type RawIndexedDataItem = IssuerSignedDataItem[];
@@ -123,4 +119,4 @@ export type MSO = {
 
 export type DocType = 'org.iso.18013.5.1.mDL';
 
-export type MSOSupportedAlgs = 'ES256' | 'ES384' | 'ES512' | 'EdDSA';
+export type SupportedAlgs = 'ES256' | 'ES384' | 'ES512' | 'EdDSA';

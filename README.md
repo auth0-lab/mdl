@@ -125,7 +125,7 @@ import { DeviceResponse } from "@auth0/mdl";
       .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
       .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
       .authenticateWithSignature(devicePrivateKey)
-      .generate();
+      .sign();
   }
 })();
 ```

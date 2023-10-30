@@ -393,8 +393,8 @@ export class Verifier {
     }))).flat();
 
     const deviceAttributes = document instanceof DeviceSignedDocument ?
-      Array.from(document.deviceSigned.nameSpaces.entries()).map(([ns, items]) => {
-        return Array.from(items.entries()).map(([id, value]) => {
+      Object.entries(document.deviceSigned.nameSpaces).map(([ns, items]) => {
+        return Object.entries(items).map(([id, value]) => {
           return {
             ns,
             id,
