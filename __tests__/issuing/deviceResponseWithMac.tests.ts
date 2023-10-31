@@ -6,10 +6,10 @@ import {
   Verifier,
   parse,
   DeviceResponse,
+  DeviceSignedDocument,
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
-import { DeviceSignedDocument } from '../../src/mdoc/model/IssuerSignedDocument';
 import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
@@ -120,6 +120,10 @@ describe('issuing a device response with MAC authentication', () => {
       ephemeralReaderKey: ephemeralPrivateKey,
       encodedSessionTranscript,
     });
+  });
+
+  it('should generate a device mac without payload', () => {
+    expect(parsedDocument.deviceSigned.deviceAuth.deviceMac?.payload).toBeNull();
   });
 
   it('should contain the validity info', () => {

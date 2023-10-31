@@ -19,13 +19,23 @@ export class DeviceSignedDocument extends IssuerSignedDocument {
 
   prepare(): Map<string, any> {
     const doc = super.prepare();
+    const deviceSignature = this.deviceSigned.deviceAuth.deviceSignature?.getContentForEncoding();
+    const deviceMac = this.deviceSigned.deviceAuth.deviceMac?.getContentForEncoding();
+    // detach payload
+    if (deviceMac) {
+      deviceMac[2] = null;
+    }
+    if (deviceSignature) {
+      deviceSignature[2] = null;
+    }
+    //
     doc.set('deviceSigned', {
       ...this.deviceSigned,
       nameSpaces: DataItem.fromData(this.deviceSigned.nameSpaces),
       deviceAuth: {
         ...this.deviceSigned.deviceAuth,
-        deviceSignature: this.deviceSigned.deviceAuth.deviceSignature?.getContentForEncoding(),
-        deviceMac: this.deviceSigned.deviceAuth.deviceMac?.getContentForEncoding(),
+        deviceSignature,
+        deviceMac,
       },
     });
     return doc;

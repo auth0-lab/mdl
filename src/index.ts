@@ -5,4 +5,5 @@ export { DiagnosticInformation as DianosticInformation } from './mdoc/model/type
 export { MDoc } from './mdoc/model/MDoc';
 export { Document } from './mdoc/model/Document';
 export { IssuerSignedDocument } from './mdoc/model/IssuerSignedDocument';
+export { DeviceSignedDocument } from './mdoc/model/DeviceSignedDocument';
 export { DeviceResponse } from './mdoc/model/DeviceResponse';

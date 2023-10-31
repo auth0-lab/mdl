@@ -5,10 +5,10 @@ import {
   Verifier,
   parse,
   DeviceResponse,
+  DeviceSignedDocument,
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
-import { DeviceSignedDocument } from '../../src/mdoc/model/IssuerSignedDocument';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -123,5 +123,9 @@ describe('issuing a device response', () => {
   it('should contain the device namespaces', () => {
     expect(parsedDocument.getDeviceNameSpace('com.foobar-device'))
       .toEqual({ test: 1234 });
+  });
+
+  it('should generate the signature without payload', () => {
+    expect(parsedDocument.deviceSigned.deviceAuth.deviceSignature?.payload).toBeNull();
   });
 });
