@@ -82,14 +82,16 @@ describe('issuing a device response with MAC authentication', () => {
       mdoc = new MDoc([document]);
     }
 
-    //  This is the Device side
+    // This is the verifier side before requesting the Device Response
     {
-      // generate an ephemeral key
       const ephemeralKey = await jose.exportJWK((await jose.generateKeyPair('ES256')).privateKey);
       ephemeralPrivateKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKey));
       const { d: _1, ...ephemeralKeyPublic } = ephemeralKey;
       ephemeralPublicKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKeyPublic));
+    }
 
+    //  This is the Device side
+    {
       const verifierGeneratedNonce = 'abcdefg';
       const mdocGeneratedNonce = '123456';
       const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
