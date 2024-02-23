@@ -10,6 +10,33 @@
     "build": "rm -rf lib ; tsc",
     "prepare": "npm run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/auth0-lab/mdl.git"
+  },
+  "keywords": [
+    "auth0",
+    "mdl",
+    "m-doc",
+    "m-doc-cbor",
+    "m-doc-cbor-parser",
+    "m-doc-cbor-validator",
+    "m-doc-cbor-encoder",
+    "m-doc-cbor-decoder",
+    "m-doc-cbor-iso-18013-5",
+    "m-doc-cbor-iso-18013-5-parser",
+    "m-doc-cbor-iso-18013-5-validator",
+    "m-doc-cbor-iso-18013-5-encoder",
+    "m-doc-cbor-iso-18013-5-decoder"
+  ],
+  "author": {
+    "name": "Auth0 Inc.",
+    "url": "https://auth0.com"
+  },
+  "contributors": [
+    "José Romaniello (https://x.com/jfroma)",
+    "Sebastian Iacomuzzi (https://x.com/sebasiaco)"
+  ],
   "files": [
     "lib/**/*"
   ],
