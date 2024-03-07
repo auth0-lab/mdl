@@ -67,7 +67,7 @@
     "buffer": "^6.0.3",
     "cbor-x": "^1.5.4",
     "compare-versions": "^6.0.0",
-    "cose-kit": "^1.7.0",
+    "cose-kit": "^1.7.1",
     "debug": "^4.3.4",
     "jose": "^4.14.6",
     "uncrypto": "^0.1.3"
