@@ -41,4 +41,11 @@ export class IssuerSignedDocument {
       nameSpace.map((item) => [item.elementIdentifier, item.elementValue]),
     );
   }
+
+  /**
+   * List of namespaces in the document.
+   */
+  get issuerSignedNameSpaces(): string[] {
+    return Object.keys(this.issuerSigned.nameSpaces);
+  }
 }
