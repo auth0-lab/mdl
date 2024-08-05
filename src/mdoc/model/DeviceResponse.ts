@@ -1,5 +1,6 @@
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
+import { Buffer } from 'buffer';
 import { InputDescriptor, PresentationDefinition } from './PresentationDefinition';
 import { MDoc } from './MDoc';
 import { DeviceAuth, DeviceSigned, MacSupportedAlgs, SupportedAlgs } from './types';
