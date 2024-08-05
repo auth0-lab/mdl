@@ -3,7 +3,7 @@ name: CI
 on: [pull_request]
 
 jobs:
-  release:
+  ci:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write # to be able to comment on released pull requests
@@ -21,9 +21,12 @@ jobs:
       - name: Install dependencies
         run: npm clean-install
 
-      - name: Validate PR commits with commitlint
+      - name: Validate Commits Messages
         if: github.event_name == 'pull_request'
         run: npx --no-install commitlint --verbose --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }}
 
-      - name: Run Tests
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
         run: npm test
