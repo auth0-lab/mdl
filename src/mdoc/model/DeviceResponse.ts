@@ -12,8 +12,6 @@ import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey } from '../
 import { DataItem, cborEncode } from '../../cbor';
 import COSEKeyToRAW from '../../cose/coseKey';
 
-const DOC_TYPE = 'org.iso.18013.5.1.mDL';
-
 /**
  * A builder class for creating a device response.
  */
@@ -53,6 +51,15 @@ export class DeviceResponse {
    * @returns {DeviceResponse}
    */
   public usingPresentationDefinition(pd: PresentationDefinition): DeviceResponse {
+    if (!pd.input_descriptors.length) {
+      throw new Error('The Presentation Definition must have at least one Input Descriptor object.');
+    }
+
+    const hasDuplicates = pd.input_descriptors.some((id1, idx) => pd.input_descriptors.findIndex((id2) => id2.id === id1.id) !== idx);
+    if (hasDuplicates) {
+      throw new Error('Each Input Descriptor object must have a unique id property.');
+    }
+
     this.pd = pd;
     return this;
   }
@@ -134,25 +141,8 @@ export class DeviceResponse {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
     if (!this.handover) throw new Error('Must provide handover data with .usingHandover()');
 
-    const inputDescriptor = this.pd.input_descriptors.find((id) => id.id === DOC_TYPE);
-
-    if (!inputDescriptor) {
-      throw new Error(
-        `The presentation definition does not include an input descriptor for the default DocType "${DOC_TYPE}"`,
-      );
-    }
-
-    if (this.pd.input_descriptors.length > 1) {
-      console.warn(
-        `Presentation definition includes input_descriptors for unsupported DocTypes. Only "${DOC_TYPE}" is supported`,
-      );
-    }
-
-    const doc = await this.handleInputDescriptor(inputDescriptor);
-
-    return new MDoc(
-      [doc],
-    );
+    const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
+    return new MDoc(docs);
   }
 
   private async handleInputDescriptor(id: InputDescriptor): Promise<DeviceSignedDocument> {
