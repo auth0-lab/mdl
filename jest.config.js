@@ -2,10 +2,8 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  globals: {
-    'ts-jest': {
-      isolatedModules: true,
-    },
+  transform: {
+    '.*/__tests__/.*/.*\\.tests\\.ts': ['ts-jest', {isolatedModules: true}]
   },
   testMatch: ['**/__tests__/**/*.tests.ts'],
 };
