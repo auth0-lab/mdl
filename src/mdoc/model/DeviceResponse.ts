@@ -73,7 +73,10 @@ export class DeviceResponse {
    * @returns {DeviceResponse}
    */
   public usingHandover(handover: string[]): DeviceResponse {
-    this.usingSessionTranscriptBytes(cborEncode(DataItem.fromData([null, null, handover])));
+    this.usingSessionTranscriptBytes(cborEncode(DataItem.fromData([
+      null, // deviceEngagementBytes
+      null, // eReaderKeyBytes
+      handover])));
     return this;
   }
 
