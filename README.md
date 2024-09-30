@@ -92,6 +92,8 @@ import fs from "node:fs";
 
 ## Generating a device response
 
+### Using a OID4VP handover
+
 ```js
 import { DeviceResponse } from "@auth0/mdl";
 (() => {
@@ -124,6 +126,46 @@ import { DeviceResponse } from "@auth0/mdl";
     deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
       .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
       .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+      .authenticateWithSignature(devicePrivateKey, 'ES256')
+      .sign();
+  }
+})();
+```
+
+### Using an arbitrary session transcript
+
+```js
+import { DeviceResponse } from "@auth0/mdl";
+(() => {
+  let issuerMDoc;
+  let deviceResponseMDoc;
+
+  // This is what the MDL issuer does to generate a credential:
+  {
+    const document = await new Document('org.iso.18013.5.1.mDL')
+      .addIssuerNameSpace('org.iso.18013.5.1', {
+        family_name: 'Jones',
+        given_name: 'Ava',
+        birth_date: '2007-03-25',
+      })
+      .useDigestAlgorithm('SHA-256')
+      .addValidityInfo({
+        signed: new Date(),
+      })
+      .addDeviceKeyInfo({ deviceKey: publicKeyJWK })
+      .sign({
+        issuerPrivateKey,
+        issuerCertificate,
+        alg: 'ES256',
+      });
+    issuerMDoc = new MDoc([document]).encode();
+  }
+
+  // This is what the DEVICE does to generate a response:
+  {
+    deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
+      .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+      .usingSessionTranscriptBytes(sessionTranscriptBytes)
       .authenticateWithSignature(devicePrivateKey, 'ES256')
       .sign();
   }
