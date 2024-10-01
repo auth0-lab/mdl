@@ -1,3 +1,4 @@
+import { randomFillSync } from 'crypto';
 import * as jose from 'jose';
 import {
   MDoc,
@@ -77,55 +78,110 @@ describe('issuing a device response', () => {
 
       mdoc = new MDoc([document]);
     }
-
-    //  This is the Device side
-    {
-      const verifierGeneratedNonce = 'abcdefg';
-      const mdocGeneratedNonce = '123456';
-      const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
-      const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
-      const devicePrivateKey = DEVICE_JWK;
-
-      const deviceResponseMDoc = await DeviceResponse.from(mdoc)
-        .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-        .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-        .authenticateWithSignature(devicePrivateKey, 'ES256')
-        .addDeviceNameSpace('com.foobar-device', { test: 1234 })
-        .sign();
-
-      encodedSessionTranscript = getSessionTranscriptBytes(
-        { client_id: clientId, response_uri: responseUri, nonce: verifierGeneratedNonce },
-        mdocGeneratedNonce,
-      );
-
-      encoded = deviceResponseMDoc.encode();
-    }
-
-    const parsedMDOC = parse(encoded);
-    [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
   });
 
-  it('should be verifiable', async () => {
-    const verifier = new Verifier([ISSUER_CERTIFICATE]);
-    await verifier.verify(encoded, {
-      encodedSessionTranscript,
+  describe('using OID4VP handover', () => {
+    beforeAll(async () => {
+    //  This is the Device side
+      {
+        const verifierGeneratedNonce = 'abcdefg';
+        const mdocGeneratedNonce = '123456';
+        const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
+        const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
+        const devicePrivateKey = DEVICE_JWK;
+
+        const deviceResponseMDoc = await DeviceResponse.from(mdoc)
+          .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+          .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+          .authenticateWithSignature(devicePrivateKey, 'ES256')
+          .addDeviceNameSpace('com.foobar-device', { test: 1234 })
+          .sign();
+
+        encodedSessionTranscript = getSessionTranscriptBytes(
+          { client_id: clientId, response_uri: responseUri, nonce: verifierGeneratedNonce },
+          mdocGeneratedNonce,
+        );
+
+        encoded = deviceResponseMDoc.encode();
+      }
+
+      const parsedMDOC = parse(encoded);
+      [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
+    });
+
+    it('should be verifiable', async () => {
+      const verifier = new Verifier([ISSUER_CERTIFICATE]);
+      await verifier.verify(encoded, {
+        encodedSessionTranscript,
+      });
+    });
+
+    it('should contain the validity info', () => {
+      const { validityInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
+      expect(validityInfo).toBeDefined();
+      expect(validityInfo.signed).toEqual(new Date('2023-10-24'));
+      expect(validityInfo.validFrom).toEqual(new Date('2023-10-24'));
+      expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
+    });
+
+    it('should contain the device namespaces', () => {
+      expect(parsedDocument.getDeviceNameSpace('com.foobar-device'))
+        .toEqual({ test: 1234 });
+    });
+
+    it('should generate the signature without payload', () => {
+      expect(parsedDocument.deviceSigned.deviceAuth.deviceSignature?.payload).toBeNull();
     });
   });
 
-  it('should contain the validity info', () => {
-    const { validityInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
-    expect(validityInfo).toBeDefined();
-    expect(validityInfo.signed).toEqual(new Date('2023-10-24'));
-    expect(validityInfo.validFrom).toEqual(new Date('2023-10-24'));
-    expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
-  });
+  describe('using an arbitrary session transcript', () => {
+    beforeAll(async () => {
+      //  This is the Device side
+      {
+        const devicePrivateKey = DEVICE_JWK;
 
-  it('should contain the device namespaces', () => {
-    expect(parsedDocument.getDeviceNameSpace('com.foobar-device'))
-      .toEqual({ test: 1234 });
-  });
+        // The session transcript can be anything, as long as the wallet and the verifier agree on what it is exactly.
+        const sessionTranscript = Buffer.alloc(32);
+        randomFillSync(sessionTranscript);
+        encodedSessionTranscript = cborEncode(DataItem.fromData(sessionTranscript));
+        console.log(encodedSessionTranscript.toString('hex'));
 
-  it('should generate the signature without payload', () => {
-    expect(parsedDocument.deviceSigned.deviceAuth.deviceSignature?.payload).toBeNull();
+        const deviceResponseMDoc = await DeviceResponse.from(mdoc)
+          .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+          .usingSessionTranscriptBytes(encodedSessionTranscript)
+          .authenticateWithSignature(devicePrivateKey, 'ES256')
+          .addDeviceNameSpace('com.foobar-device', { test: 1234 })
+          .sign();
+
+        encoded = deviceResponseMDoc.encode();
+      }
+
+      const parsedMDOC = parse(encoded);
+      [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
+    });
+
+    it('should be verifiable', async () => {
+      const verifier = new Verifier([ISSUER_CERTIFICATE]);
+      await verifier.verify(encoded, {
+        encodedSessionTranscript,
+      });
+    });
+
+    it('should contain the validity info', () => {
+      const { validityInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
+      expect(validityInfo).toBeDefined();
+      expect(validityInfo.signed).toEqual(new Date('2023-10-24'));
+      expect(validityInfo.validFrom).toEqual(new Date('2023-10-24'));
+      expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
+    });
+
+    it('should contain the device namespaces', () => {
+      expect(parsedDocument.getDeviceNameSpace('com.foobar-device'))
+        .toEqual({ test: 1234 });
+    });
+
+    it('should generate the signature without payload', () => {
+      expect(parsedDocument.deviceSigned.deviceAuth.deviceSignature?.payload).toBeNull();
+    });
   });
 });

@@ -93,13 +93,20 @@ import fs from "node:fs";
 ## Generating a device response
 
 ```js
-import { DeviceResponse } from "@auth0/mdl";
-(() => {
+import { DeviceResponse, DataItem, MDoc, DataItem, cborEncode} from '@auth0/mdl';
+import { createHash } from 'node:crypto';
+
+(async () => {
   let issuerMDoc;
   let deviceResponseMDoc;
 
-  // This is what the MDL issuer does to generate a credential:
+  /**
+   * This is what the MDL issuer does to generate a credential:
+   */
   {
+    let issuerPrivateKey;
+    let issuerCertificate;
+    let devicePublicKey; // the public key for the device, as a JWK
     const document = await new Document('org.iso.18013.5.1.mDL')
       .addIssuerNameSpace('org.iso.18013.5.1', {
         family_name: 'Jones',
@@ -110,7 +117,7 @@ import { DeviceResponse } from "@auth0/mdl";
       .addValidityInfo({
         signed: new Date(),
       })
-      .addDeviceKeyInfo({ deviceKey: publicKeyJWK })
+      .addDeviceKeyInfo({ deviceKey: devicePublicKey })
       .sign({
         issuerPrivateKey,
         issuerCertificate,
@@ -119,13 +126,65 @@ import { DeviceResponse } from "@auth0/mdl";
     issuerMDoc = new MDoc([document]).encode();
   }
 
-  // This is what the DEVICE does to generate a response:
+  /**
+   * This is what the DEVICE does to generate a response...
+   */
   {
-    deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
-      .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-      .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-      .authenticateWithSignature(devicePrivateKey, 'ES256')
-      .sign();
+    let devicePrivateKey; // the private key for the device, as a JWK
+    let presentationDefinition = {
+      // the presentation definition we create a response for
+      id: 'family_name_only',
+      input_descriptors: [
+        {
+          id: 'org.iso.18013.5.1.mDL',
+          format: { mso_mdoc: { alg: ['EdDSA', 'ES256'] } },
+          constraints: {
+            limit_disclosure: 'required',
+            fields: [{
+                path: ["$['org.iso.18013.5.1']['family_name']"],
+                intent_to_retain: false,
+              }],
+          },
+        },
+      ],
+    };
+
+    /** ... using a OID4VP handover: */
+    {
+      // Parameters coming from the OID4VP transaction
+      let mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce;
+
+      deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
+        .usingPresentationDefinition(presentationDefinition)
+        .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+        .authenticateWithSignature(devicePrivateKey, 'ES256')
+        .sign();
+    }
+
+    /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+    {
+      let encodedReaderEngagement; // CBOR as received from the reader
+      let encodedDeviceEngagement; // CBOR as sent to the reader
+      let encodedReaderPublicKey;  // as found in the ReaderEngagement
+
+      const engagementToApp = Buffer.from(
+        createHash('sha256').update(encodedReaderEngagement).digest('hex'),
+        'hex',
+      );
+      const sessionTranscriptBytes = cborEncode(
+        DataItem.fromData([
+          new DataItem({ buffer: encodedDeviceEngagement }),
+          new DataItem({ buffer: encodedReaderPublicKey }),
+          engagementToApp,
+        ]),
+      );
+
+      deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
+        .usingPresentationDefinition(presentationDefinition)
+        .usingSessionTranscriptBytes(sessionTranscriptBytes)
+        .authenticateWithSignature(devicePrivateKey, 'ES256')
+        .sign();
+    }
   }
 })();
 ```

@@ -1,6 +1,6 @@
 import { hex } from 'buffer-tag';
 import { Verifier } from '../src/index';
-import { DiagnosticInformation } from '../src/deviceResponse/types';
+import { DiagnosticInformation } from '../src/mdoc/model/types';
 
 export const ISSUER_CERTIFICATE = `-----BEGIN CERTIFICATE-----
 MIICKjCCAdCgAwIBAgIUV8bM0wi95D7KN0TyqHE42ru4hOgwCgYIKoZIzj0EAwIw

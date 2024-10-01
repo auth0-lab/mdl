@@ -18,7 +18,7 @@ import COSEKeyToRAW from '../../cose/coseKey';
 export class DeviceResponse {
   private mdoc: MDoc;
   private pd: PresentationDefinition;
-  private handover: string[];
+  private sessionTranscriptBytes: Buffer;
   private useMac = true;
   private devicePrivateKey: Uint8Array;
   public deviceResponseCbor: Buffer;
@@ -65,13 +65,33 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the handover data to use for the device response.
+   * Set the session transcript data to use for the device response with the given handover data.
+   * this is a shortcut to calling `usingSessionTranscriptBytes(<cbor encoding of [null, null, handover] in a Tagged 24 structure>)`,
+   * which is what the OID4VP protocol expects.
    *
-   * @param {string[]} handover - The handover data to use for the device response.
+   * @param {string[]} handover - The handover data to use in the session transcript.
    * @returns {DeviceResponse}
    */
   public usingHandover(handover: string[]): DeviceResponse {
-    this.handover = handover;
+    this.usingSessionTranscriptBytes(cborEncode(DataItem.fromData([
+      null, // deviceEngagementBytes
+      null, // eReaderKeyBytes
+      handover])));
+    return this;
+  }
+
+  /**
+   * Set the session transcript data to use for the device response. This is arbitrary and should match
+   * the session transcript as it will be calculated by the verifier.
+   * We expect a buffer of bytes, as defined in as defined in ISO/IEC 18013-7 in both Annex A (Web API) and Annex B (OID4VP)
+   * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
+   * @returns {DeviceResponse}
+   */
+  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
+    if (this.sessionTranscriptBytes) {
+      throw new Error('A session transcript has already been set, either with .usingHandover or .usingSessionTranscriptBytes');
+    }
+    this.sessionTranscriptBytes = sessionTranscriptBytes;
     return this;
   }
 
@@ -139,7 +159,7 @@ export class DeviceResponse {
    */
   public async sign(): Promise<MDoc> {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
-    if (!this.handover) throw new Error('Must provide handover data with .usingHandover()');
+    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with .usingHandover() or .usingSessionTranscriptBytes()');
 
     const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
     return new MDoc(docs);
@@ -165,14 +185,8 @@ export class DeviceResponse {
   }
 
   private async getDeviceSigned(docType: string): Promise<DeviceSigned> {
-    const sessionTranscript = [
-      null, // deviceEngagementBytes
-      null, // eReaderKeyBytes,
-      this.handover,
-    ];
-
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
-      sessionTranscript,
+      this.sessionTranscriptBytes,
       docType,
       this.nameSpaces,
     );
@@ -180,7 +194,7 @@ export class DeviceResponse {
     const deviceSigned: DeviceSigned = {
       nameSpaces: this.nameSpaces,
       deviceAuth: this.useMac
-        ? await this.getDeviceAuthMac(deviceAuthenticationBytes, sessionTranscript)
+        ? await this.getDeviceAuthMac(deviceAuthenticationBytes, this.sessionTranscriptBytes)
         : await this.getDeviceAuthSign(deviceAuthenticationBytes),
     };
 
@@ -189,7 +203,7 @@ export class DeviceResponse {
 
   private async getDeviceAuthMac(
     deviceAuthenticationBytes: Uint8Array,
-    sessionTranscript: any,
+    sessionTranscriptBytes: any,
   ): Promise<DeviceAuth> {
     const key = COSEKeyToRAW(this.devicePrivateKey);
     const { kid } = COSEKeyToJWK(this.devicePrivateKey);
@@ -197,7 +211,7 @@ export class DeviceResponse {
     const ephemeralMacKey = await calculateEphemeralMacKey(
       key,
       this.ephemeralPublicKey,
-      cborEncode(DataItem.fromData(sessionTranscript)),
+      sessionTranscriptBytes,
     );
 
     const mac = await Mac0.create(
