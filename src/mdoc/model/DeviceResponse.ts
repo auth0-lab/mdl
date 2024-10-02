@@ -66,9 +66,10 @@ export class DeviceResponse {
 
   /**
    * Set the session transcript data to use for the device response with the given handover data.
-   * this is a shortcut to calling `usingSessionTranscriptBytes(<cbor encoding of [null, null, handover] in a Tagged 24 structure>)`,
+   * this is a shortcut to calling {@link usingSessionTranscriptBytes}(`<cbor encoding of [null, null, handover] in a Tagged 24 structure>`),
    * which is what the OID4VP protocol expects.
    *
+   * @deprecated Use {@link usingSessionTranscriptForOID4VP} instead.
    * @param {string[]} handover - The handover data to use in the session transcript.
    * @returns {DeviceResponse}
    */
@@ -81,17 +82,81 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response. This is arbitrary and should match
-   * the session transcript as it will be calculated by the verifier.
-   * We expect a buffer of bytes, as defined in as defined in ISO/IEC 18013-7 in both Annex A (Web API) and Annex B (OID4VP)
+   * Set the session transcript data to use for the device response.
+   *
+   * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
+   * The transcript must be a CBOR encoded DataItem of an array, there is no further requirement.
+   *
+   * Example: `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything including `null`.
+   *
+   * It is preferable to use {@link usingSessionTranscriptForOID4VP} or {@link usingSessionTranscriptForWebAPI} when possible.
+   *
    * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {DeviceResponse}
    */
   public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
     if (this.sessionTranscriptBytes) {
-      throw new Error('A session transcript has already been set, either with .usingHandover or .usingSessionTranscriptBytes');
+      throw new Error(
+        'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
+      );
     }
     this.sessionTranscriptBytes = sessionTranscriptBytes;
+    return this;
+  }
+
+  /**
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2023 draft.
+   *
+   * This should match the session transcript as it will be calculated by the verifier.
+   *
+   * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
+   * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
+   * @param {string} responseUri - The response_uri Authorization Request parameter from the Authorization Request Object.
+   * @param {string} verifierGeneratedNonce - The nonce Authorization Request parameter from the Authorization Request Object.
+   * @returns {DeviceResponse}
+   */
+  public usingSessionTranscriptForOID4VP(
+    mdocGeneratedNonce: string,
+    clientId: string,
+    responseUri: string,
+    verifierGeneratedNonce: string,
+  ): DeviceResponse {
+    this.usingSessionTranscriptBytes(
+      cborEncode(
+        DataItem.fromData([
+          null, // deviceEngagementBytes
+          null, // eReaderKeyBytes
+          [mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce],
+        ]),
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2023 draft.
+   *
+   * This should match the session transcript as it will be calculated by the verifier.
+   *
+   * @param {Buffer} deviceEngagementBytes - The device engagement, encoded as a Tagged 24 cbor
+   * @param {Buffer} readerEngagementBytes - The reader engagement, encoded as a Tagged 24 cbor
+   * @param {Buffer} eReaderKeyBytes - The reader ephemeral public key as a COSE Key, encoded as a Tagged 24 cbor
+   * @returns {DeviceResponse}
+   */
+  public usingSessionTranscriptForWebAPI(
+    deviceEngagementBytes: Buffer,
+    readerEngagementBytes: Buffer,
+    eReaderKeyBytes: Buffer,
+  ): DeviceResponse {
+    this.usingSessionTranscriptBytes(
+      cborEncode(
+        DataItem.fromData([
+          new DataItem({ buffer: deviceEngagementBytes }),
+          new DataItem({ buffer: eReaderKeyBytes }),
+          readerEngagementBytes,
+        ]),
+      ),
+    );
     return this;
   }
 
@@ -159,7 +224,7 @@ export class DeviceResponse {
    */
   public async sign(): Promise<MDoc> {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
-    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with .usingHandover() or .usingSessionTranscriptBytes()');
+    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with either .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes');
 
     const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
     return new MDoc(docs);

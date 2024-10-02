@@ -2,7 +2,7 @@
 
 [ISO 18013-5](https://www.iso.org/standard/69084.html) defines mDL (mobile Driver Licenses): an ISO standard for digital driver licenses.
 
-This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents.
+This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2023-08-02)**.
 
 ## Installation
 
@@ -156,7 +156,7 @@ import { createHash } from 'node:crypto';
 
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }
@@ -181,7 +181,7 @@ import { createHash } from 'node:crypto';
 
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptBytes(sessionTranscriptBytes)
+        .usingSessionTranscriptForWebAPI(encodedDeviceEngagement, encodedReaderEngagement, encodedReaderPublicKey)
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }

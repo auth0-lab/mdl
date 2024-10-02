@@ -1,5 +1,6 @@
-import { randomFillSync } from 'crypto';
+import { createHash, randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
+import { COSEKeyFromJWK } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -10,22 +11,14 @@ import {
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
+import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
-
-const getSessionTranscriptBytes = ({ client_id: clientId, response_uri: responseUri, nonce }, mdocGeneratedNonce) => cborEncode(
-  DataItem.fromData([
-    null, // DeviceEngagementBytes
-    null, // EReaderKeyBytes
-    [mdocGeneratedNonce, clientId, responseUri, nonce], // Handover = OID4VPHandover
-  ]),
-);
 
 describe('issuing a device response', () => {
   let encoded: Uint8Array;
   let parsedDocument: DeviceSignedDocument;
   let mdoc: MDoc;
-  let encodedSessionTranscript: Buffer;
 
   beforeAll(async () => {
     const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
@@ -81,30 +74,30 @@ describe('issuing a device response', () => {
   });
 
   describe('using OID4VP handover', () => {
+    const verifierGeneratedNonce = 'abcdefg';
+    const mdocGeneratedNonce = '123456';
+    const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
+    const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
+
+    const getSessionTranscriptBytes = (clId: string, respUri: string, nonce: string, mdocNonce: string) => cborEncode(
+      DataItem.fromData([
+        null, // DeviceEngagementBytes
+        null, // EReaderKeyBytes
+        [mdocNonce, clId, respUri, nonce], // Handover = OID4VPHandover
+      ]),
+    );
+
     beforeAll(async () => {
-    //  This is the Device side
-      {
-        const verifierGeneratedNonce = 'abcdefg';
-        const mdocGeneratedNonce = '123456';
-        const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
-        const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
-        const devicePrivateKey = DEVICE_JWK;
+      //  This is the Device side
+      const devicePrivateKey = DEVICE_JWK;
+      const deviceResponseMDoc = await DeviceResponse.from(mdoc)
+        .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
+        .authenticateWithSignature(devicePrivateKey, 'ES256')
+        .addDeviceNameSpace('com.foobar-device', { test: 1234 })
+        .sign();
 
-        const deviceResponseMDoc = await DeviceResponse.from(mdoc)
-          .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-          .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-          .authenticateWithSignature(devicePrivateKey, 'ES256')
-          .addDeviceNameSpace('com.foobar-device', { test: 1234 })
-          .sign();
-
-        encodedSessionTranscript = getSessionTranscriptBytes(
-          { client_id: clientId, response_uri: responseUri, nonce: verifierGeneratedNonce },
-          mdocGeneratedNonce,
-        );
-
-        encoded = deviceResponseMDoc.encode();
-      }
-
+      encoded = deviceResponseMDoc.encode();
       const parsedMDOC = parse(encoded);
       [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
     });
@@ -112,7 +105,28 @@ describe('issuing a device response', () => {
     it('should be verifiable', async () => {
       const verifier = new Verifier([ISSUER_CERTIFICATE]);
       await verifier.verify(encoded, {
-        encodedSessionTranscript,
+        encodedSessionTranscript: getSessionTranscriptBytes(clientId, responseUri, verifierGeneratedNonce, mdocGeneratedNonce),
+      });
+    });
+
+    describe('should not be verifiable', () => {
+      [
+        ['clientId', { clientId: 'wrong', responseUri, verifierGeneratedNonce, mdocGeneratedNonce }] as const,
+        ['responseUri', { clientId, responseUri: 'wrong', verifierGeneratedNonce, mdocGeneratedNonce }] as const,
+        ['verifierGeneratedNonce', { clientId, responseUri, verifierGeneratedNonce: 'wrong', mdocGeneratedNonce }] as const,
+        ['mdocGeneratedNonce', { clientId, responseUri, verifierGeneratedNonce, mdocGeneratedNonce: 'wrong' }] as const,
+      ].forEach(([name, values]) => {
+        it(`with a different ${name}`, async () => {
+          try {
+            const verifier = new Verifier([ISSUER_CERTIFICATE]);
+            await verifier.verify(encoded, {
+              encodedSessionTranscript: getSessionTranscriptBytes(values.clientId, values.responseUri, values.verifierGeneratedNonce, values.mdocGeneratedNonce),
+            });
+            throw new Error('should not validate with different transcripts');
+          } catch (error) {
+            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');
+          }
+        });
       });
     });
 
@@ -134,25 +148,37 @@ describe('issuing a device response', () => {
     });
   });
 
-  describe('using an arbitrary session transcript', () => {
+  describe('using WebAPI handover', () => {
+    // The actual value for the engagements & the key do not matter,
+    // as long as the device and the reader agree on what value to use.
+    const eReaderKeyBytes: Buffer = randomFillSync(Buffer.alloc(32));
+    const readerEngagementBytes = randomFillSync(Buffer.alloc(32));
+    const deviceEngagementBytes = randomFillSync(Buffer.alloc(32));
+
+    const getSessionTranscriptBytes = (
+      rdrEngtBytes: Buffer,
+      devEngtBytes: Buffer,
+      eRdrKeyBytes: Buffer,
+    ) => cborEncode(
+      DataItem.fromData([
+        new DataItem({ buffer: devEngtBytes }),
+        new DataItem({ buffer: eRdrKeyBytes }),
+        rdrEngtBytes,
+      ]),
+    );
+
     beforeAll(async () => {
-      //  This is the Device side
+      // Nothing more to do on the verifier side.
+
+      // This is the Device side
       {
         const devicePrivateKey = DEVICE_JWK;
-
-        // The session transcript can be anything, as long as the wallet and the verifier agree on what it is exactly.
-        const sessionTranscript = Buffer.alloc(32);
-        randomFillSync(sessionTranscript);
-        encodedSessionTranscript = cborEncode(DataItem.fromData(sessionTranscript));
-        console.log(encodedSessionTranscript.toString('hex'));
-
         const deviceResponseMDoc = await DeviceResponse.from(mdoc)
           .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-          .usingSessionTranscriptBytes(encodedSessionTranscript)
+          .usingSessionTranscriptForWebAPI(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes)
           .authenticateWithSignature(devicePrivateKey, 'ES256')
           .addDeviceNameSpace('com.foobar-device', { test: 1234 })
           .sign();
-
         encoded = deviceResponseMDoc.encode();
       }
 
@@ -163,7 +189,28 @@ describe('issuing a device response', () => {
     it('should be verifiable', async () => {
       const verifier = new Verifier([ISSUER_CERTIFICATE]);
       await verifier.verify(encoded, {
-        encodedSessionTranscript,
+        encodedSessionTranscript: getSessionTranscriptBytes(readerEngagementBytes, deviceEngagementBytes, eReaderKeyBytes),
+      });
+    });
+
+    describe('should not be verifiable', () => {
+      const wrong = randomFillSync(Buffer.alloc(32));
+      [
+        ['readerEngagementBytes', { readerEngagementBytes: wrong, deviceEngagementBytes, eReaderKeyBytes }] as const,
+        ['deviceEngagementBytes', { readerEngagementBytes, deviceEngagementBytes: wrong, eReaderKeyBytes }] as const,
+        ['eReaderKeyBytes', { readerEngagementBytes, deviceEngagementBytes, eReaderKeyBytes: wrong }] as const,
+      ].forEach(([name, values]) => {
+        it(`with a different ${name}`, async () => {
+          const verifier = new Verifier([ISSUER_CERTIFICATE]);
+          try {
+            await verifier.verify(encoded, {
+              encodedSessionTranscript: getSessionTranscriptBytes(values.readerEngagementBytes, values.deviceEngagementBytes, values.eReaderKeyBytes),
+            });
+            throw new Error('should not validate with different transcripts');
+          } catch (error) {
+            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');
+          }
+        });
       });
     });
 
