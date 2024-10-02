@@ -85,7 +85,7 @@ export class DeviceResponse {
    * Set the session transcript data to use for the device response.
    *
    * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
-   * The transcript must be a CBOR encoded DataItem of an array with 3 elements, there is no further requirement.
+   * The transcript must be a CBOR encoded DataItem of an array, there is no further requirement.
    *
    * Example: `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything including `null`.
    *
