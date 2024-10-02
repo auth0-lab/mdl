@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import { Buffer } from 'buffer';
@@ -67,10 +66,10 @@ export class DeviceResponse {
 
   /**
    * Set the session transcript data to use for the device response with the given handover data.
-   * this is a shortcut to calling `usingSessionTranscriptBytes(<cbor encoding of [null, null, handover] in a Tagged 24 structure>)`,
+   * this is a shortcut to calling {@link usingSessionTranscriptBytes}(`<cbor encoding of [null, null, handover] in a Tagged 24 structure>`),
    * which is what the OID4VP protocol expects.
    *
-   * @deprecated Use `.usingSessionTranscriptForOID4VP` instead.
+   * @deprecated Use {@link usingSessionTranscriptForOID4VP} instead.
    * @param {string[]} handover - The handover data to use in the session transcript.
    * @returns {DeviceResponse}
    */
@@ -83,10 +82,15 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response. This is arbitrary and should match the session transcript as it will be calculated by the verifier.
+   * Set the session transcript data to use for the device response.
+   *
+   * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
    * The transcript must be a CBOR encoded DataItem of an array with 3 elements, there is no further requirement.
-   * `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything
-   * It is preferable to use `usingSessionTranscriptForOID4VP` or `usingSessionTranscriptForWebAPI` when possible.
+   *
+   * Example: `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything including `null`.
+   *
+   * It is preferable to use {@link usingSessionTranscriptForOID4VP} or {@link usingSessionTranscriptForWebAPI} when possible.
+   *
    * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {DeviceResponse}
    */
@@ -102,11 +106,13 @@ export class DeviceResponse {
 
   /**
    * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2023 draft.
+   *
    * This should match the session transcript as it will be calculated by the verifier.
+   *
    * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
    * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
    * @param {string} responseUri - The response_uri Authorization Request parameter from the Authorization Request Object.
-   * @param {string} nonce - The nonce Authorization Request parameter from the Authorization Request Object.
+   * @param {string} verifierGeneratedNonce - The nonce Authorization Request parameter from the Authorization Request Object.
    * @returns {DeviceResponse}
    */
   public usingSessionTranscriptForOID4VP(
@@ -129,7 +135,9 @@ export class DeviceResponse {
 
   /**
    * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2023 draft.
+   *
    * This should match the session transcript as it will be calculated by the verifier.
+   *
    * @param {Buffer} deviceEngagementBytes - The device engagement, encoded as a Tagged 24 cbor
    * @param {Buffer} readerEngagementBytes - The reader engagement, encoded as a Tagged 24 cbor
    * @param {Buffer} eReaderKeyBytes - The reader ephemeral public key as a COSE Key, encoded as a Tagged 24 cbor

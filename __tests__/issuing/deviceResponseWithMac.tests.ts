@@ -1,4 +1,4 @@
-import { createHash, randomFillSync } from 'node:crypto';
+import { randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
 import { COSEKeyFromJWK } from 'cose-kit';
 import {
