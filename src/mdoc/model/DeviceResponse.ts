@@ -101,7 +101,7 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP).
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2023 draft.
    * This should match the session transcript as it will be calculated by the verifier.
    * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
    * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
@@ -128,7 +128,7 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API).
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2023 draft.
    * This should match the session transcript as it will be calculated by the verifier.
    * @param {Buffer} deviceEngagementBytes - The device engagement, encoded as a Tagged 24 cbor
    * @param {Buffer} readerEngagementBytes - The reader engagement, encoded as a Tagged 24 cbor

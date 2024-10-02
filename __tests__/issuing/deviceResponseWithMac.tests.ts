@@ -203,10 +203,7 @@ describe('issuing a device response with MAC authentication', () => {
       DataItem.fromData([
         new DataItem({ buffer: devEngtBytes }),
         new DataItem({ buffer: eRdrKeyBytes }),
-        Buffer.from(
-          createHash('sha256').update(rdrEngtBytes).digest('hex'),
-          'hex',
-        ),
+        rdrEngtBytes,
       ]),
     );
 
