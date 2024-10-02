@@ -94,7 +94,7 @@ export class DeviceResponse {
   public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
     if (this.sessionTranscriptBytes) {
       throw new Error(
-        'A session transcript has already been set, with one of the .usingSessionTranscriptBytesXXX methods',
+        'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP or .usingSessionTranscriptForWebAPI',
       );
     }
     this.sessionTranscriptBytes = sessionTranscriptBytes;
@@ -104,10 +104,10 @@ export class DeviceResponse {
   /**
    * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP).
    * This should match the session transcript as it will be calculated by the verifier.
-   * @param {string} mdocGeneratedNonce -
-   * @param {string} clientId -
-   * @param {string} responseUri -
-   * @param {string} verifierGeneratedNonce -
+   * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
+   * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
+   * @param {string} responseUri - The response_uri Authorization Request parameter from the Authorization Request Object.
+   * @param {string} nonce - The nonce Authorization Request parameter from the Authorization Request Object.
    * @returns {DeviceResponse}
    */
   public usingSessionTranscriptBytesForOID4VP(
