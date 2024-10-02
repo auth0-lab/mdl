@@ -145,7 +145,7 @@ export class DeviceResponse {
         DataItem.fromData([
           new DataItem({ buffer: deviceEngagementBytes }),
           new DataItem({ buffer: eReaderKeyBytes }),
-          Buffer.from(createHash('sha256').update(readerEngagementBytes).digest('hex'), 'hex'),
+          readerEngagementBytes,
         ]),
       ),
     );
