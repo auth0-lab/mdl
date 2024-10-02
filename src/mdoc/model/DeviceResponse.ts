@@ -97,7 +97,7 @@ export class DeviceResponse {
   public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
     if (this.sessionTranscriptBytes) {
       throw new Error(
-        'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP or .usingSessionTranscriptForWebAPI',
+        'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
       );
     }
     this.sessionTranscriptBytes = sessionTranscriptBytes;
@@ -224,7 +224,7 @@ export class DeviceResponse {
    */
   public async sign(): Promise<MDoc> {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
-    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with either .usingSessionTranscriptForOID4VP or .usingSessionTranscriptForWebAPI');
+    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with either .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes');
 
     const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
     return new MDoc(docs);
