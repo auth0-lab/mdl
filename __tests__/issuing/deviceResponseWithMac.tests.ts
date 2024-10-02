@@ -86,38 +86,33 @@ describe('issuing a device response with MAC authentication', () => {
     let encodedSessionTranscript: Buffer;
     let parsedDocument: DeviceSignedDocument;
 
+    const verifierGeneratedNonce = 'abcdefg';
+    const mdocGeneratedNonce = '123456';
+    const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
+    const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
+
+    const getSessionTranscriptBytes = (clId: string, respUri: string, nonce: string, mdocNonce: string) => cborEncode(
+      DataItem.fromData([
+        null, // DeviceEngagementBytes
+        null, // EReaderKeyBytes
+        [mdocNonce, clId, respUri, nonce], // Handover = OID4VPHandover
+      ]),
+    );
+
     beforeAll(async () => {
-      const getSessionTranscriptBytes = ({ client_id: clientId, response_uri: responseUri, nonce }, mdocGeneratedNonce) => cborEncode(
-        DataItem.fromData([
-          null, // DeviceEngagementBytes
-          null, // EReaderKeyBytes
-          [mdocGeneratedNonce, clientId, responseUri, nonce], // Handover = OID4VPHandover
-        ]),
-      );
-
       //  This is the Device side
-      {
-        const verifierGeneratedNonce = 'abcdefg';
-        const mdocGeneratedNonce = '123456';
-        const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
-        const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
+      const deviceResponseMDoc = await DeviceResponse.from(mdoc)
+        .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
+        .usingSessionTranscriptBytesForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
+        .authenticateWithMAC(DEVICE_JWK, ephemeralPublicKey, 'HS256')
+        .addDeviceNameSpace('com.foobar-device', { test: 1234 })
+        .sign();
 
-        const deviceResponseMDoc = await DeviceResponse.from(mdoc)
-          .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-          .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
-          .authenticateWithMAC(DEVICE_JWK, ephemeralPublicKey, 'HS256')
-          .addDeviceNameSpace('com.foobar-device', { test: 1234 })
-          .sign();
+      encodedSessionTranscript = getSessionTranscriptBytes(clientId, responseUri, verifierGeneratedNonce, mdocGeneratedNonce);
 
-        encodedSessionTranscript = getSessionTranscriptBytes(
-          { client_id: clientId, response_uri: responseUri, nonce: verifierGeneratedNonce },
-          mdocGeneratedNonce,
-        );
-
-        encoded = deviceResponseMDoc.encode();
-        const parsedMDOC = parse(encoded);
-        [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
-      }
+      encoded = deviceResponseMDoc.encode();
+      const parsedMDOC = parse(encoded);
+      [parsedDocument] = parsedMDOC.documents as DeviceSignedDocument[];
     });
 
     it('should be verifiable', async () => {
@@ -125,6 +120,57 @@ describe('issuing a device response with MAC authentication', () => {
       await verifier.verify(encoded, {
         ephemeralReaderKey: ephemeralPrivateKey,
         encodedSessionTranscript,
+      });
+    });
+
+    describe('should not be verifiable', () => {
+      it('with a different client_id', async () => {
+        try {
+          const verifier = new Verifier([ISSUER_CERTIFICATE]);
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(`wrong ${clientId}`, responseUri, verifierGeneratedNonce, mdocGeneratedNonce),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
+      it('with a different response_uri', async () => {
+        try {
+          const verifier = new Verifier([ISSUER_CERTIFICATE]);
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(clientId, `wrong ${responseUri}`, verifierGeneratedNonce, mdocGeneratedNonce),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
+      it('with a different verifier nonce', async () => {
+        try {
+          const verifier = new Verifier([ISSUER_CERTIFICATE]);
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(clientId, responseUri, `wrong ${verifierGeneratedNonce}`, mdocGeneratedNonce),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
+      it('with a different mdoc nonce', async () => {
+        try {
+          const verifier = new Verifier([ISSUER_CERTIFICATE]);
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(clientId, responseUri, verifierGeneratedNonce, `wrong ${mdocGeneratedNonce}`),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
       });
     });
 
@@ -150,12 +196,22 @@ describe('issuing a device response with MAC authentication', () => {
     let encoded: Uint8Array;
     let encodedSessionTranscript: Buffer;
     let parsedDocument: DeviceSignedDocument;
+    let eReaderKeyBytes: Buffer;
+    const readerEngagementBytes = randomFillSync(Buffer.alloc(32));
+    const deviceEngagementBytes = randomFillSync(Buffer.alloc(32));
 
-    const getSessionTranscriptBytes = () => cborEncode(
+    const getSessionTranscriptBytes = (
+      rdrEngtBytes: Buffer,
+      devEngtBytes: Buffer,
+      eRdrKeyBytes: Buffer,
+    ) => cborEncode(
       DataItem.fromData([
-        new DataItem({ buffer: randomFillSync(Buffer.alloc(32)) }),
-        new DataItem({ buffer: randomFillSync(Buffer.alloc(32)) }),
-        Buffer.from(createHash('sha256').update(randomFillSync(Buffer.alloc(32))).digest('hex'), 'hex'),
+        new DataItem({ buffer: devEngtBytes }),
+        new DataItem({ buffer: eRdrKeyBytes }),
+        Buffer.from(
+          createHash('sha256').update(rdrEngtBytes).digest('hex'),
+          'hex',
+        ),
       ]),
     );
 
@@ -169,15 +225,16 @@ describe('issuing a device response with MAC authentication', () => {
         ephemeralPrivateKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKey));
         const { d: _1, ...ephemeralKeyPublic } = ephemeralKey;
         ephemeralPublicKey = COSEKeyToRAW(COSEKeyFromJWK(ephemeralKeyPublic));
+        eReaderKeyBytes = Buffer.from(ephemeralPublicKey);
       }
 
-      encodedSessionTranscript = getSessionTranscriptBytes();
+      encodedSessionTranscript = getSessionTranscriptBytes(readerEngagementBytes, deviceEngagementBytes, eReaderKeyBytes);
 
       //  This is the Device side
       {
         const deviceResponseMDoc = await DeviceResponse.from(mdoc)
           .usingPresentationDefinition(PRESENTATION_DEFINITION_1)
-          .usingSessionTranscriptBytes(encodedSessionTranscript)
+          .usingSessionTranscriptBytesForWebAPI(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes)
           .authenticateWithMAC(DEVICE_JWK, ephemeralPublicKey, 'HS256')
           .addDeviceNameSpace('com.foobar-device', { test: 1234 })
           .sign();
@@ -196,17 +253,45 @@ describe('issuing a device response with MAC authentication', () => {
       });
     });
 
-    it('should not be verifiable if using a different transcript', async () => {
-      const verifier = new Verifier([ISSUER_CERTIFICATE]);
-      try {
-        await verifier.verify(encoded, {
-          ephemeralReaderKey: ephemeralPrivateKey,
-          encodedSessionTranscript: getSessionTranscriptBytes(),
-        });
-        fail('should not validate with different transcripts');
-      } catch (error) {
-        expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
-      }
+    describe('should not be verifiable', () => {
+      it('with a different readerengagement', async () => {
+        const verifier = new Verifier([ISSUER_CERTIFICATE]);
+        try {
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(randomFillSync(Buffer.alloc(32)), deviceEngagementBytes, eReaderKeyBytes),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
+
+      it('with a different deviceengagement', async () => {
+        const verifier = new Verifier([ISSUER_CERTIFICATE]);
+        try {
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(readerEngagementBytes, randomFillSync(Buffer.alloc(32)), eReaderKeyBytes),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
+
+      it('with a different eReaderKey', async () => {
+        const verifier = new Verifier([ISSUER_CERTIFICATE]);
+        try {
+          await verifier.verify(encoded, {
+            ephemeralReaderKey: ephemeralPrivateKey,
+            encodedSessionTranscript: getSessionTranscriptBytes(readerEngagementBytes,deviceEngagementBytes, randomFillSync(Buffer.alloc(32))),
+          });
+          throw new Error('should not validate with different transcripts');
+        } catch (error) {
+          expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+        }
+      });
     });
 
     it('should generate a device mac without payload', () => {
