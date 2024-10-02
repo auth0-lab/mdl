@@ -156,7 +156,7 @@ import { createHash } from 'node:crypto';
 
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingHandover([mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce])
+        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }
@@ -181,7 +181,7 @@ import { createHash } from 'node:crypto';
 
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptBytes(sessionTranscriptBytes)
+        .usingSessionTranscriptForWebAPI(encodedDeviceEngagement, encodedReaderEngagement, encodedReaderPublicKey)
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }

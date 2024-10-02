@@ -70,7 +70,7 @@ export class DeviceResponse {
    * this is a shortcut to calling `usingSessionTranscriptBytes(<cbor encoding of [null, null, handover] in a Tagged 24 structure>)`,
    * which is what the OID4VP protocol expects.
    *
-   * @deprecated Use `.usingSessionTranscriptBytesForOID4VP` instead.
+   * @deprecated Use `.usingSessionTranscriptForOID4VP` instead.
    * @param {string[]} handover - The handover data to use in the session transcript.
    * @returns {DeviceResponse}
    */
@@ -85,9 +85,8 @@ export class DeviceResponse {
   /**
    * Set the session transcript data to use for the device response. This is arbitrary and should match the session transcript as it will be calculated by the verifier.
    * The transcript must be a CBOR encoded DataItem of an array with 3 elements, there is no further requirement.
-   * `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be 
-    )
-   * It is preferable to use `usingSessionTranscriptBytesForOID4VP` or `usingSessionTranscriptBytesForWebAPI` when possible.
+   * `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything
+   * It is preferable to use `usingSessionTranscriptForOID4VP` or `usingSessionTranscriptForWebAPI` when possible.
    * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {DeviceResponse}
    */
@@ -110,7 +109,7 @@ export class DeviceResponse {
    * @param {string} nonce - The nonce Authorization Request parameter from the Authorization Request Object.
    * @returns {DeviceResponse}
    */
-  public usingSessionTranscriptBytesForOID4VP(
+  public usingSessionTranscriptForOID4VP(
     mdocGeneratedNonce: string,
     clientId: string,
     responseUri: string,
@@ -136,16 +135,11 @@ export class DeviceResponse {
    * @param {Buffer} eReaderKeyBytes - The reader ephemeral public key as a COSE Key, encoded as a Tagged 24 cbor
    * @returns {DeviceResponse}
    */
-  public usingSessionTranscriptBytesForWebAPI(
+  public usingSessionTranscriptForWebAPI(
     deviceEngagementBytes: Buffer,
     readerEngagementBytes: Buffer,
     eReaderKeyBytes: Buffer,
   ): DeviceResponse {
-    if (this.sessionTranscriptBytes) {
-      throw new Error(
-        'A session transcript has already been set, either with .usingSessionTranscriptBytesForOID4VP or .usingSessionTranscriptBytesForWebAPI',
-      );
-    }
     this.usingSessionTranscriptBytes(
       cborEncode(
         DataItem.fromData([
@@ -222,7 +216,7 @@ export class DeviceResponse {
    */
   public async sign(): Promise<MDoc> {
     if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
-    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with one of the .usingSessionTranscriptBytesXXX methods');
+    if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with either .usingSessionTranscriptForOID4VP or .usingSessionTranscriptForWebAPI');
 
     const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
     return new MDoc(docs);
