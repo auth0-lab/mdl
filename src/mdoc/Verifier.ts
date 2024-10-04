@@ -316,7 +316,7 @@ export class Verifier {
   /**
    * Set the session transcript data to use for the verification.
    *
-   * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
+   * This is arbitrary and should match the session transcript as it was calculated by the mdoc app (ie, wallet).
    * The transcript must be a CBOR encoded DataItem of an array, there is no further requirement.
    *
    * Example: `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything including `null`.
@@ -339,7 +339,7 @@ export class Verifier {
   /**
    * Set the session transcript data to use for the verification as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2024 draft.
    *
-   * This should match the session transcript as it will be calculated by the mdoc app.
+   * This should match the session transcript as it was calculated by the mdoc app.
    *
    * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
    * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
