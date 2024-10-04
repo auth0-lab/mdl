@@ -89,7 +89,7 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2023 draft.
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2024 draft.
    *
    * This should match the session transcript as it will be calculated by the verifier.
    *
@@ -122,7 +122,7 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2023 draft.
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2024 draft.
    *
    * This should match the session transcript as it will be calculated by the verifier.
    *
