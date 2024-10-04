@@ -2,7 +2,9 @@
 
 [ISO 18013-5](https://www.iso.org/standard/69084.html) defines mDL (mobile Driver Licenses): an ISO standard for digital driver licenses.
 
-This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2024-02-13)**.
+> [!WARNING] This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2024-02-13)**.
+
+> [!WARNING] please use v1.*.* to use **ISO 18013-7 (draft's date: 2023-08-02)**.
 
 ## Installation
 
