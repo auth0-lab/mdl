@@ -26,12 +26,35 @@ import fs from "node:fs";
 
   const trustedCerts = [fs.readFileSync('./caCert1.pem')/*, ... */];
   const verifier = new Verifier(trustedCerts);
-  const mdoc = await verifier.verify(encodedDeviceResponse, {
-    ephemeralReaderKey,
-    encodedSessionTranscript,
-  });
 
-  //at this point the issuer and device signature are valids.
+  let mdoc;
+
+  /** ... using a OID4VP handover: */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForOID4VP(
+        mdocGeneratedNonce,    //
+        clientId,              // Parameters coming from
+        responseUri,           // the OID4VP transaction
+        verifierGeneratedNonce  //
+      )
+      .verify(encodedDeviceResponse);
+  }
+
+  /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForWebAPI(
+        encodedDeviceEngagement, // CBOR as received from the reader
+        encodedReaderEngagement, // CBOR as sent to the reader
+        encodedReaderPublicKey,  // as found in the ReaderEngagement
+      )
+      .verify(encodedDeviceResponse);
+  }
+
+  //at this point the issuer and device signature are valid.
   inspect(mdoc);
 })();
 ```
@@ -51,11 +74,32 @@ import fs from "node:fs";
   const trustedCerts = [fs.readFileSync('./caCert1.pem')/*, ... */];
   const verifier = new Verifier(trustedCerts);
 
+  let diagnosticInfo;
+  
+    /** ... using a OID4VP handover: */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForOID4VP(
+        mdocGeneratedNonce,    //
+        clientId,              // Parameters coming from
+        responseUri,           // the OID4VP transaction
+        verifierGeneratedNonce  //
+      )
+      .getDiagnosticInformation(encodedDeviceResponse);
+  }
 
-  const diagnosticInfo = await verifier
-    .usingEphemeralReaderKey(ephemeralReaderKey)
-    .usingSessionTranscriptBytes(encodedSessionTranscript)
-    .getDiagnosticInformation(encodedDeviceResponse);
+  /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForWebAPI(
+        encodedDeviceEngagement, // CBOR as received from the reader
+        encodedReaderEngagement, // CBOR as sent to the reader
+        encodedReaderPublicKey,  // as found in the ReaderEngagement
+      )
+      .getDiagnosticInformation(encodedDeviceResponse);
+  }
 
   inspect(diagnosticInfo);
 })();
@@ -152,30 +196,27 @@ import { createHash } from 'node:crypto';
 
     /** ... using a OID4VP handover: */
     {
-      // Parameters coming from the OID4VP transaction
-      let mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce;
-
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
+        .usingSessionTranscriptForOID4VP(
+          mdocGeneratedNonce,    //
+          clientId,              // Parameters coming from
+          responseUri,           // the OID4VP transaction
+          verifierGeneratedNonce  //
+        )
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }
 
     /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
     {
-      let encodedReaderEngagement; // CBOR as received from the reader
-      let encodedDeviceEngagement; // CBOR as sent to the reader
-      let encodedReaderPublicKey;  // as found in the ReaderEngagement
-
-      const engagementToApp = Buffer.from(
-        createHash('sha256').update(encodedReaderEngagement).digest('hex'),
-        'hex',
-      );
-
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptForWebAPI(encodedDeviceEngagement, encodedReaderEngagement, encodedReaderPublicKey)
+        .usingSessionTranscriptForWebAPI(
+          encodedDeviceEngagement, // CBOR as received from the reader
+          encodedReaderEngagement, // CBOR as sent to the reader
+          encodedReaderPublicKey,  // as found in the ReaderEngagement
+        )
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }
