@@ -4,7 +4,7 @@
 
 This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2024-02-13)**.
 
-Please use v1.*.* to conform to **ISO 18013-7 (draft's date: 2023-08-02)**.
+> If you are working with the **2023 draft** make sure to use the `@auth0/mdl@v1` version.
 
 ## Installation
 
