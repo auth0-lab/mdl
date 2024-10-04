@@ -21,7 +21,8 @@ describe('example 1: valid device response with full disclosure', () => {
 
   it('should be able to verify without ephemeralReaderKey and encodedSessionTrasncript', async () => {
     await new Verifier([ISSUER_CERTIFICATE])
-      .verify(deviceResponse,
+      .verify(
+        deviceResponse,
         (verification, original) => {
           if (verification.category === 'DEVICE_AUTH') {
             return;

@@ -1,4 +1,4 @@
-import { createHash, randomFillSync } from 'node:crypto';
+import { randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
 import {
   MDoc,
@@ -9,7 +9,6 @@ import {
   DeviceSignedDocument,
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
-import { DataItem, cborEncode } from '../../src/cbor';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -76,18 +75,6 @@ describe('issuing a device response', () => {
     const mdocGeneratedNonce = '123456';
     const clientId = 'Cq1anPb8vZU5j5C0d7hcsbuJLBpIawUJIDQRi2Ebwb4';
     const responseUri = 'http://localhost:4000/api/presentation_request/dc8999df-d6ea-4c84-9985-37a8b81a82ec/callback';
-
-    const getSessionTranscriptBytes = (clId: string, respUri: string, nonce: string, mdocNonce: string) => cborEncode(
-      DataItem.fromData([
-        null, // DeviceEngagementBytes
-        null, // EReaderKeyBytes
-        [
-          createHash('sha256').update(cborEncode([clId, mdocNonce])).digest(),
-          createHash('sha256').update(cborEncode([respUri, mdocNonce])).digest(),
-          nonce,
-        ], // Handover = OID4VPHandover
-      ]),
-    );
 
     beforeAll(async () => {
       //  This is the Device side
