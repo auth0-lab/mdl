@@ -65,23 +65,6 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response with the given handover data.
-   * this is a shortcut to calling {@link usingSessionTranscriptBytes}(`<cbor encoding of [null, null, handover] in a Tagged 24 structure>`),
-   * which is what the OID4VP protocol expects.
-   *
-   * @deprecated Use {@link usingSessionTranscriptForOID4VP} instead.
-   * @param {string[]} handover - The handover data to use in the session transcript.
-   * @returns {DeviceResponse}
-   */
-  public usingHandover(handover: string[]): DeviceResponse {
-    this.usingSessionTranscriptBytes(cborEncode(DataItem.fromData([
-      null, // deviceEngagementBytes
-      null, // eReaderKeyBytes
-      handover])));
-    return this;
-  }
-
-  /**
    * Set the session transcript data to use for the device response.
    *
    * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
