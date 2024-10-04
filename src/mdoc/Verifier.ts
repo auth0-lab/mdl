@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
 import { importX509, JWK, KeyLike } from 'jose';
@@ -22,6 +23,7 @@ import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedDocument } from './model/IssuerSignedDocument';
 import { DeviceSignedDocument } from './model/DeviceSignedDocument';
 import COSEKeyToRAW from '../cose/coseKey';
+import { cborEncode, DataItem } from '../cbor';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -32,6 +34,22 @@ const DIGEST_ALGS = {
 } as { [key: string]: string };
 
 export class Verifier {
+  /**
+   * The encoded session transcript to use for verification.
+   * @see {@link usingSessionTranscriptBytes}
+   * @see {@link usingSessionTranscriptForOID4VP}
+   * @see {@link usingSessionTranscriptForWebAPI}
+   */
+  #sessionTranscriptBytes: Buffer;
+
+  /**
+   * The raw private part of the ephemeral reader key.
+   * @see {@link usingEphemeralReaderKey}
+   */
+  #ephemeralReaderKey: Uint8Array;
+
+  #disableCertificateChainValidation: boolean = false;
+
   /**
    *
    * @param issuersRootCertificates The IACA root certificates list of the supported issuers.
@@ -96,13 +114,9 @@ export class Verifier {
 
   private async verifyDeviceSignature(
     document: IssuerSignedDocument | DeviceSignedDocument,
-    options: {
-      ephemeralPrivateKey?: Uint8Array;
-      sessionTranscriptBytes?: Uint8Array;
-      onCheck: UserDefinedVerificationCallback,
-    },
+    onCheckCbk: UserDefinedVerificationCallback,
   ) {
-    const onCheck = onCatCheck(options.onCheck, 'DEVICE_AUTH');
+    const onCheck = onCatCheck(onCheckCbk, 'DEVICE_AUTH');
 
     if (!(document instanceof DeviceSignedDocument)) {
       onCheck({
@@ -125,16 +139,16 @@ export class Verifier {
       return;
     }
 
-    if (!options.sessionTranscriptBytes) {
+    if (!this.#sessionTranscriptBytes) {
       onCheck({
         status: 'FAILED',
-        check: 'Session Transcript Bytes missing from options, aborting device signature check',
+        check: 'Set Session Transcript Bytes with .usingSessionTranscriptForWepAPI, .usingSessionTranscriptForOID4VP or .usingSessionTranscriptBytes, aborting device signature check',
       });
       return;
     }
 
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
-      options.sessionTranscriptBytes,
+      this.#sessionTranscriptBytes,
       docType,
       nameSpaces,
     );
@@ -190,17 +204,17 @@ export class Verifier {
     if (!deviceAuth.deviceMac.hasSupportedAlg()) { return; }
 
     onCheck({
-      status: options.ephemeralPrivateKey ? 'PASSED' : 'FAILED',
-      check: 'Ephemeral private key must be present when using MAC authentication',
+      status: this.#ephemeralReaderKey ? 'PASSED' : 'FAILED',
+      check: 'Set Ephemeral private key with .usingEphemeralReaderKey using MAC authentication',
     });
-    if (!options.ephemeralPrivateKey) { return; }
+    if (!this.#ephemeralReaderKey) { return; }
 
     try {
       const deviceKeyRaw = COSEKeyToRAW(deviceKeyCoseKey);
       const ephemeralMacKey = await calculateEphemeralMacKey(
-        options.ephemeralPrivateKey,
+        this.#ephemeralReaderKey,
         deviceKeyRaw,
-        options.sessionTranscriptBytes,
+        this.#sessionTranscriptBytes,
       );
 
       const isValid = await deviceAuth.deviceMac.verify(
@@ -300,38 +314,133 @@ export class Verifier {
   }
 
   /**
+   * Set the session transcript data to use for the verification.
+   *
+   * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
+   * The transcript must be a CBOR encoded DataItem of an array, there is no further requirement.
+   *
+   * Example: `usingSessionTranscriptBytes(cborEncode(DataItem.fromData([a,b,c])))` where `a`, `b` and `c` can be anything including `null`.
+   *
+   * It is preferable to use {@link usingSessionTranscriptForOID4VP} or {@link usingSessionTranscriptForWebAPI} when possible.
+   *
+   * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
+   * @returns {Verifier}
+   */
+  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): Verifier {
+    if (this.#sessionTranscriptBytes) {
+      throw new Error(
+        'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
+      );
+    }
+    this.#sessionTranscriptBytes = sessionTranscriptBytes;
+    return this;
+  }
+
+  /**
+   * Set the session transcript data to use for the verification as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2024 draft.
+   *
+   * This should match the session transcript as it will be calculated by the mdoc app.
+   *
+   * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
+   * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
+   * @param {string} responseUri - The response_uri Authorization Request parameter from the Authorization Request Object.
+   * @param {string} verifierGeneratedNonce - The nonce Authorization Request parameter from the Authorization Request Object.
+   * @returns {Verifier}
+   */
+  public usingSessionTranscriptForOID4VP(
+    mdocGeneratedNonce: string,
+    clientId: string,
+    responseUri: string,
+    verifierGeneratedNonce: string,
+  ): Verifier {
+    this.usingSessionTranscriptBytes(
+      cborEncode(
+        DataItem.fromData([
+          null, // deviceEngagementBytes
+          null, // eReaderKeyBytes
+          [
+            createHash('sha256').update(cborEncode([clientId, mdocGeneratedNonce])).digest(),
+            createHash('sha256').update(cborEncode([responseUri, mdocGeneratedNonce])).digest(),
+            verifierGeneratedNonce,
+          ],
+        ]),
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * Set the session transcript data to use for the verification as defined in ISO/IEC 18013-7 in Annex A (Web API), 2024 draft.
+   *
+   * This should match the session transcript as it will be calculated by the mdoc app.
+   *
+   * @param {Buffer} deviceEngagementBytes - The device engagement, encoded as a Tagged 24 cbor
+   * @param {Buffer} readerEngagementBytes - The reader engagement, encoded as a Tagged 24 cbor
+   * @param {Buffer} eReaderKeyBytes - The reader ephemeral public key as a COSE Key, encoded as a Tagged 24 cbor
+   * @returns {Verifier}
+   */
+  public usingSessionTranscriptForWebAPI(
+    deviceEngagementBytes: Buffer,
+    readerEngagementBytes: Buffer,
+    eReaderKeyBytes: Buffer,
+  ): Verifier {
+    this.usingSessionTranscriptBytes(
+      cborEncode(
+        DataItem.fromData([
+          new DataItem({ buffer: deviceEngagementBytes }),
+          new DataItem({ buffer: eReaderKeyBytes }),
+          createHash('sha256').update(readerEngagementBytes).digest(),
+        ]),
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * @param {Buffer} ephemeralReaderKey - The private part of the ephemeral key used in the session where the DeviceResponse was obtained. This is only required if the DeviceResponse is using the MAC method for device authentication.
+   * @returns {Verifier}
+   */
+  public usingEphemeralReaderKey(ephemeralReaderKey: Uint8Array): Verifier {
+    this.#ephemeralReaderKey = ephemeralReaderKey;
+    return this;
+  }
+
+  /**
+   * Disables the certificate validation
+   * @returns {Verifier}
+   */
+  public disableCertificateChainValidation(): Verifier {
+    this.#disableCertificateChainValidation = true;
+    return this;
+  }
+
+  /**
    * Parse and validate a DeviceResponse as specified in ISO/IEC 18013-5 (Device Retrieval section).
    *
    * @param encodedDeviceResponse
-   * @param options.encodedSessionTranscript The CBOR encoded SessionTranscript.
-   * @param options.ephemeralReaderKey The private part of the ephemeral key used in the session where the DeviceResponse was obtained. This is only required if the DeviceResponse is using the MAC method for device authentication.
+   * @param options.disableCertificateChainValidation Whether to use the certificate validation.
    */
   async verify(
     encodedDeviceResponse: Uint8Array,
-    options: {
-      encodedSessionTranscript?: Uint8Array,
-      ephemeralReaderKey?: Uint8Array,
-      disableCertificateChainValidation?: boolean,
-      onCheck?: UserDefinedVerificationCallback
-    } = {},
+    onCheck?: UserDefinedVerificationCallback,
   ): Promise<MDoc> {
-    const onCheck = buildCallback(options.onCheck);
+    const onCheckCbk = buildCallback(onCheck);
 
     const dr = parse(encodedDeviceResponse);
 
-    onCheck({
+    onCheckCbk({
       status: dr.version ? 'PASSED' : 'FAILED',
       check: 'Device Response must include "version" element.',
       category: 'DOCUMENT_FORMAT',
     });
 
-    onCheck({
+    onCheckCbk({
       status: compareVersions(dr.version, '1.0') >= 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response version must be 1.0 or greater',
       category: 'DOCUMENT_FORMAT',
     });
 
-    onCheck({
+    onCheckCbk({
       status: dr.documents && dr.documents.length > 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response must include at least one document.',
       category: 'DOCUMENT_FORMAT',
@@ -339,15 +448,11 @@ export class Verifier {
 
     for (const document of dr.documents) {
       const { issuerAuth } = document.issuerSigned;
-      await this.verifyIssuerSignature(issuerAuth, options.disableCertificateChainValidation, onCheck);
+      await this.verifyIssuerSignature(issuerAuth, this.#disableCertificateChainValidation, onCheckCbk);
 
-      await this.verifyDeviceSignature(document, {
-        ephemeralPrivateKey: options.ephemeralReaderKey,
-        sessionTranscriptBytes: options.encodedSessionTranscript,
-        onCheck,
-      });
+      await this.verifyDeviceSignature(document, onCheckCbk);
 
-      await this.verifyData(document, onCheck);
+      await this.verifyData(document, onCheckCbk);
     }
 
     return dr;
@@ -355,20 +460,9 @@ export class Verifier {
 
   async getDiagnosticInformation(
     encodedDeviceResponse: Buffer,
-    options: {
-      encodedSessionTranscript?: Buffer,
-      ephemeralReaderKey?: Buffer,
-      disableCertificateChainValidation?: boolean,
-    },
   ): Promise<DiagnosticInformation> {
     const dr: VerificationAssessment[] = [];
-    const decoded = await this.verify(
-      encodedDeviceResponse,
-      {
-        ...options,
-        onCheck: (check) => dr.push(check),
-      },
-    );
+    const decoded = await this.verify(encodedDeviceResponse, (check) => dr.push(check));
 
     const document = decoded.documents[0];
     const { issuerAuth } = document.issuerSigned;

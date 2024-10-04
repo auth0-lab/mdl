@@ -106,9 +106,9 @@ describe('issuing a device response', () => {
 
     it('should be verifiable', async () => {
       const verifier = new Verifier([ISSUER_CERTIFICATE]);
-      await verifier.verify(encoded, {
-        encodedSessionTranscript: getSessionTranscriptBytes(clientId, responseUri, verifierGeneratedNonce, mdocGeneratedNonce),
-      });
+      await verifier
+        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
+        .verify(encoded);
     });
 
     describe('should not be verifiable', () => {
@@ -121,9 +121,9 @@ describe('issuing a device response', () => {
         it(`with a different ${name}`, async () => {
           try {
             const verifier = new Verifier([ISSUER_CERTIFICATE]);
-            await verifier.verify(encoded, {
-              encodedSessionTranscript: getSessionTranscriptBytes(values.clientId, values.responseUri, values.verifierGeneratedNonce, values.mdocGeneratedNonce),
-            });
+            await verifier
+              .usingSessionTranscriptForOID4VP(values.mdocGeneratedNonce, values.clientId, values.responseUri, values.verifierGeneratedNonce)
+              .verify(encoded);
             throw new Error('should not validate with different transcripts');
           } catch (error) {
             expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');
@@ -157,18 +157,6 @@ describe('issuing a device response', () => {
     const readerEngagementBytes = randomFillSync(Buffer.alloc(32));
     const deviceEngagementBytes = randomFillSync(Buffer.alloc(32));
 
-    const getSessionTranscriptBytes = (
-      rdrEngtBytes: Buffer,
-      devEngtBytes: Buffer,
-      eRdrKeyBytes: Buffer,
-    ) => cborEncode(
-      DataItem.fromData([
-        new DataItem({ buffer: devEngtBytes }),
-        new DataItem({ buffer: eRdrKeyBytes }),
-        createHash('sha256').update(rdrEngtBytes).digest(),
-      ]),
-    );
-
     beforeAll(async () => {
       // Nothing more to do on the verifier side.
 
@@ -190,24 +178,24 @@ describe('issuing a device response', () => {
 
     it('should be verifiable', async () => {
       const verifier = new Verifier([ISSUER_CERTIFICATE]);
-      await verifier.verify(encoded, {
-        encodedSessionTranscript: getSessionTranscriptBytes(readerEngagementBytes, deviceEngagementBytes, eReaderKeyBytes),
-      });
+      await verifier
+        .usingSessionTranscriptForWebAPI(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes)
+        .verify(encoded);
     });
 
     describe('should not be verifiable', () => {
       const wrong = randomFillSync(Buffer.alloc(32));
       [
-        ['readerEngagementBytes', { readerEngagementBytes: wrong, deviceEngagementBytes, eReaderKeyBytes }] as const,
-        ['deviceEngagementBytes', { readerEngagementBytes, deviceEngagementBytes: wrong, eReaderKeyBytes }] as const,
-        ['eReaderKeyBytes', { readerEngagementBytes, deviceEngagementBytes, eReaderKeyBytes: wrong }] as const,
+        ['deviceEngagementBytes', { deviceEngagementBytes: wrong, readerEngagementBytes, eReaderKeyBytes }] as const,
+        ['readerEngagementBytes', { deviceEngagementBytes, readerEngagementBytes: wrong, eReaderKeyBytes }] as const,
+        ['eReaderKeyBytes', { deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes: wrong }] as const,
       ].forEach(([name, values]) => {
         it(`with a different ${name}`, async () => {
           const verifier = new Verifier([ISSUER_CERTIFICATE]);
           try {
-            await verifier.verify(encoded, {
-              encodedSessionTranscript: getSessionTranscriptBytes(values.readerEngagementBytes, values.deviceEngagementBytes, values.eReaderKeyBytes),
-            });
+            await verifier
+              .usingSessionTranscriptForWebAPI(values.deviceEngagementBytes, values.readerEngagementBytes, values.eReaderKeyBytes)
+              .verify(encoded);
             throw new Error('should not validate with different transcripts');
           } catch (error) {
             expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');

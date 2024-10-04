@@ -51,10 +51,11 @@ import fs from "node:fs";
   const trustedCerts = [fs.readFileSync('./caCert1.pem')/*, ... */];
   const verifier = new Verifier(trustedCerts);
 
-  const diagnosticInfo = await verifier.getDiagnosticInformation(encodedDeviceResponse, {
-    ephemeralReaderKey,
-    encodedSessionTranscript,
-  });
+
+  const diagnosticInfo = await verifier
+    .usingEphemeralReaderKey(ephemeralReaderKey)
+    .usingSessionTranscriptBytes(encodedSessionTranscript)
+    .getDiagnosticInformation(encodedDeviceResponse);
 
   inspect(diagnosticInfo);
 })();
