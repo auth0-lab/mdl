@@ -1,4 +1,4 @@
-import { randomFillSync } from 'node:crypto';
+import { createHash, randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
 import { COSEKeyFromJWK } from 'cose-kit';
 import {
@@ -93,7 +93,11 @@ describe('issuing a device response with MAC authentication', () => {
       DataItem.fromData([
         null, // DeviceEngagementBytes
         null, // EReaderKeyBytes
-        [mdocNonce, clId, respUri, nonce], // Handover = OID4VPHandover
+        [
+          createHash('sha256').update(cborEncode([clId, mdocNonce])).digest(),
+          createHash('sha256').update(cborEncode([respUri, mdocNonce])).digest(),
+          nonce,
+        ], // Handover = OID4VPHandover
       ]),
     );
 
@@ -174,7 +178,7 @@ describe('issuing a device response with MAC authentication', () => {
       DataItem.fromData([
         new DataItem({ buffer: devEngtBytes }),
         new DataItem({ buffer: eRdrKeyBytes }),
-        rdrEngtBytes,
+        createHash('sha256').update(rdrEngtBytes).digest(),
       ]),
     );
 

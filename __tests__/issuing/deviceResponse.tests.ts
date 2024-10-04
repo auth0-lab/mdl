@@ -1,6 +1,5 @@
 import { createHash, randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
-import { COSEKeyFromJWK } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -11,7 +10,6 @@ import {
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
-import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -83,7 +81,11 @@ describe('issuing a device response', () => {
       DataItem.fromData([
         null, // DeviceEngagementBytes
         null, // EReaderKeyBytes
-        [mdocNonce, clId, respUri, nonce], // Handover = OID4VPHandover
+        [
+          createHash('sha256').update(cborEncode([clId, mdocNonce])).digest(),
+          createHash('sha256').update(cborEncode([respUri, mdocNonce])).digest(),
+          nonce,
+        ], // Handover = OID4VPHandover
       ]),
     );
 
@@ -163,7 +165,7 @@ describe('issuing a device response', () => {
       DataItem.fromData([
         new DataItem({ buffer: devEngtBytes }),
         new DataItem({ buffer: eRdrKeyBytes }),
-        rdrEngtBytes,
+        createHash('sha256').update(rdrEngtBytes).digest(),
       ]),
     );
 

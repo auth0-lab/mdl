@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import { Buffer } from 'buffer';
@@ -109,7 +110,11 @@ export class DeviceResponse {
         DataItem.fromData([
           null, // deviceEngagementBytes
           null, // eReaderKeyBytes
-          [mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce],
+          [
+            createHash('sha256').update(cborEncode([clientId, mdocGeneratedNonce])).digest(),
+            createHash('sha256').update(cborEncode([responseUri, mdocGeneratedNonce])).digest(),
+            verifierGeneratedNonce,
+          ],
         ]),
       ),
     );
@@ -136,7 +141,7 @@ export class DeviceResponse {
         DataItem.fromData([
           new DataItem({ buffer: deviceEngagementBytes }),
           new DataItem({ buffer: eReaderKeyBytes }),
-          readerEngagementBytes,
+          createHash('sha256').update(readerEngagementBytes).digest(),
         ]),
       ),
     );
