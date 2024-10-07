@@ -11,6 +11,11 @@ const { subtle } = webcrypto;
 
 pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle }));
 
+export async function sha256(data: Buffer): Promise<Buffer> {
+  const hash = await webcrypto.subtle.digest('sha-256', data);
+  return Buffer.from(hash);
+}
+
 export const hmacSHA256 = async (
   key: ArrayBuffer,
   data: ArrayBuffer,
@@ -50,7 +55,7 @@ export const calculateEphemeralMacKey = async (
     Buffer.from(publicKey).toString('hex'),
     true,
   ).slice(1);
-  const salt = new Uint8Array(await subtle.digest('SHA-256', sessionTranscriptBytes));
+  const salt = await sha256(Buffer.from(sessionTranscriptBytes));
   const info = Buffer.from('EMacKey', 'utf-8');
   const result = await hkdf('sha256', ikm, salt, info, 32);
   return result;

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import { Buffer } from 'buffer';
@@ -9,7 +8,7 @@ import { IssuerSignedDocument } from './IssuerSignedDocument';
 import { DeviceSignedDocument } from './DeviceSignedDocument';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import { parse } from '../parser';
-import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey } from '../utils';
+import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey, sha256 } from '../utils';
 import { DataItem, cborEncode } from '../../cbor';
 import COSEKeyToRAW from '../../cose/coseKey';
 
@@ -19,7 +18,7 @@ import COSEKeyToRAW from '../../cose/coseKey';
 export class DeviceResponse {
   private mdoc: MDoc;
   private pd: PresentationDefinition;
-  private sessionTranscriptBytes: Buffer;
+  private sessionTranscriptBytes: Promise<Buffer> | Buffer;
   private useMac = true;
   private devicePrivateKey: Uint8Array;
   public deviceResponseCbor: Buffer;
@@ -78,13 +77,17 @@ export class DeviceResponse {
    * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {DeviceResponse}
    */
-  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
+  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer | Promise<Buffer>): DeviceResponse {
     if (this.sessionTranscriptBytes) {
       throw new Error(
         'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
       );
     }
-    this.sessionTranscriptBytes = sessionTranscriptBytes;
+    if (sessionTranscriptBytes instanceof Buffer) {
+      this.sessionTranscriptBytes = Promise.resolve(sessionTranscriptBytes);
+    } else {
+      this.sessionTranscriptBytes = sessionTranscriptBytes;
+    }
     return this;
   }
 
@@ -106,19 +109,28 @@ export class DeviceResponse {
     verifierGeneratedNonce: string,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          null, // deviceEngagementBytes
-          null, // eReaderKeyBytes
-          [
-            createHash('sha256').update(cborEncode([clientId, mdocGeneratedNonce])).digest(),
-            createHash('sha256').update(cborEncode([responseUri, mdocGeneratedNonce])).digest(),
-            verifierGeneratedNonce,
-          ],
-        ]),
-      ),
+      this.#oid4vptranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
     );
     return this;
+  }
+
+  async #oid4vptranscript(
+    mdocGeneratedNonce: string,
+    clientId: string,
+    responseUri: string,
+    verifierGeneratedNonce: string,
+  ) {
+    return cborEncode(
+      DataItem.fromData([
+        null, // deviceEngagementBytes
+        null, // eReaderKeyBytes
+        [
+          await sha256(cborEncode([clientId, mdocGeneratedNonce])),
+          await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
+          verifierGeneratedNonce,
+        ],
+      ]),
+    );
   }
 
   /**
@@ -137,12 +149,14 @@ export class DeviceResponse {
     eReaderKeyBytes: Buffer,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          new DataItem({ buffer: deviceEngagementBytes }),
-          new DataItem({ buffer: eReaderKeyBytes }),
-          createHash('sha256').update(readerEngagementBytes).digest(),
-        ]),
+      sha256(readerEngagementBytes).then(
+        (readerEngagementBytesHash) => cborEncode(
+          DataItem.fromData([
+            new DataItem({ buffer: deviceEngagementBytes }),
+            new DataItem({ buffer: eReaderKeyBytes }),
+            readerEngagementBytesHash,
+          ]),
+        ),
       ),
     );
     return this;
@@ -239,7 +253,7 @@ export class DeviceResponse {
 
   private async getDeviceSigned(docType: string): Promise<DeviceSigned> {
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
-      this.sessionTranscriptBytes,
+      await this.sessionTranscriptBytes,
       docType,
       this.nameSpaces,
     );
@@ -264,7 +278,7 @@ export class DeviceResponse {
     const ephemeralMacKey = await calculateEphemeralMacKey(
       key,
       this.ephemeralPublicKey,
-      sessionTranscriptBytes,
+      await sessionTranscriptBytes,
     );
 
     const mac = await Mac0.create(

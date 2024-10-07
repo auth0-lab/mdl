@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
 import { importX509, JWK, KeyLike } from 'jose';
@@ -10,6 +9,7 @@ import { MDoc } from './model/MDoc';
 import {
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
+  sha256,
 } from './utils';
 
 import {
@@ -40,7 +40,7 @@ export class Verifier {
    * @see {@link usingSessionTranscriptForOID4VP}
    * @see {@link usingSessionTranscriptForWebAPI}
    */
-  #sessionTranscriptBytes: Buffer;
+  #sessionTranscriptBytes: Promise<Buffer> | Buffer;
 
   /**
    * The raw private part of the ephemeral reader key.
@@ -148,7 +148,7 @@ export class Verifier {
     }
 
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
-      this.#sessionTranscriptBytes,
+      await this.#sessionTranscriptBytes,
       docType,
       nameSpaces,
     );
@@ -214,7 +214,7 @@ export class Verifier {
       const ephemeralMacKey = await calculateEphemeralMacKey(
         this.#ephemeralReaderKey,
         deviceKeyRaw,
-        this.#sessionTranscriptBytes,
+        await this.#sessionTranscriptBytes,
       );
 
       const isValid = await deviceAuth.deviceMac.verify(
@@ -323,10 +323,10 @@ export class Verifier {
    *
    * It is preferable to use {@link usingSessionTranscriptForOID4VP} or {@link usingSessionTranscriptForWebAPI} when possible.
    *
-   * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
+   * @param {Buffer | Promise<Buffer>} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {Verifier}
    */
-  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): Verifier {
+  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer | Promise<Buffer>): Verifier {
     if (this.#sessionTranscriptBytes) {
       throw new Error(
         'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
@@ -341,10 +341,10 @@ export class Verifier {
    *
    * This should match the session transcript as it was calculated by the mdoc app.
    *
-   * @param {string} mdocGeneratedNonce - A cryptographically random number with sufficient entropy.
+   * @param {string} mdocGeneratedNonce - The mdoc-generated nonce, taken from the `apu` parameter in the Authorization Response
    * @param {string} clientId - The client_id Authorization Request parameter from the Authorization Request Object.
    * @param {string} responseUri - The response_uri Authorization Request parameter from the Authorization Request Object.
-   * @param {string} verifierGeneratedNonce - The nonce Authorization Request parameter from the Authorization Request Object.
+   * @param {string} verifierGeneratedNonce - The nonce taken from the `apv` parameter in the Authorization Response (it should match the `nonce` sent in the Authorization Request parameter from the Authorization Request Object).
    * @returns {Verifier}
    */
   public usingSessionTranscriptForOID4VP(
@@ -354,19 +354,28 @@ export class Verifier {
     verifierGeneratedNonce: string,
   ): Verifier {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          null, // deviceEngagementBytes
-          null, // eReaderKeyBytes
-          [
-            createHash('sha256').update(cborEncode([clientId, mdocGeneratedNonce])).digest(),
-            createHash('sha256').update(cborEncode([responseUri, mdocGeneratedNonce])).digest(),
-            verifierGeneratedNonce,
-          ],
-        ]),
-      ),
+      this.#oid4vptranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
     );
     return this;
+  }
+
+  async #oid4vptranscript(
+    mdocGeneratedNonce: string,
+    clientId: string,
+    responseUri: string,
+    verifierGeneratedNonce: string,
+  ) {
+    return cborEncode(
+      DataItem.fromData([
+        null, // deviceEngagementBytes
+        null, // eReaderKeyBytes
+        [
+          await sha256(cborEncode([clientId, mdocGeneratedNonce])),
+          await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
+          verifierGeneratedNonce,
+        ],
+      ]),
+    );
   }
 
   /**
@@ -385,12 +394,14 @@ export class Verifier {
     eReaderKeyBytes: Buffer,
   ): Verifier {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          new DataItem({ buffer: deviceEngagementBytes }),
-          new DataItem({ buffer: eReaderKeyBytes }),
-          createHash('sha256').update(readerEngagementBytes).digest(),
-        ]),
+      sha256(readerEngagementBytes).then(
+        (readerEngagementBytesHash) => cborEncode(
+          DataItem.fromData([
+            new DataItem({ buffer: deviceEngagementBytes }),
+            new DataItem({ buffer: eReaderKeyBytes }),
+            readerEngagementBytesHash,
+          ]),
+        ),
       ),
     );
     return this;
@@ -418,7 +429,6 @@ export class Verifier {
    * Parse and validate a DeviceResponse as specified in ISO/IEC 18013-5 (Device Retrieval section).
    *
    * @param encodedDeviceResponse
-   * @param options.disableCertificateChainValidation Whether to use the certificate validation.
    */
   async verify(
     encodedDeviceResponse: Uint8Array,
