@@ -29,7 +29,7 @@ import fs from "node:fs";
 
   let mdoc;
 
-  /** ... using a OID4VP handover: */
+  /** ... using OID4VP protocol (Annex B): */
   {
     mdoc = await verifier
       .usingEphemeralReaderKey(ephemeralReaderKey)
@@ -42,7 +42,7 @@ import fs from "node:fs";
       .verify(encodedDeviceResponse);
   }
 
-  /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+  /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
   {
     mdoc = await verifier
       .usingEphemeralReaderKey(ephemeralReaderKey)
@@ -76,7 +76,7 @@ import fs from "node:fs";
 
   let diagnosticInfo;
   
-    /** ... using a OID4VP handover: */
+    /** ... using OID4VP protocol (Annex B): */
   {
     mdoc = await verifier
       .usingEphemeralReaderKey(ephemeralReaderKey)
@@ -89,7 +89,7 @@ import fs from "node:fs";
       .getDiagnosticInformation(encodedDeviceResponse);
   }
 
-  /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+  /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
   {
     mdoc = await verifier
       .usingEphemeralReaderKey(ephemeralReaderKey)
@@ -194,7 +194,7 @@ import { createHash } from 'node:crypto';
       ],
     };
 
-    /** ... using a OID4VP handover: */
+    /** ... using OID4VP protocol (Annex B): */
     {
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
@@ -208,7 +208,7 @@ import { createHash } from 'node:crypto';
         .sign();
     }
 
-    /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+    /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
     {
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
