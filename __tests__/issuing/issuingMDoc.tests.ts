@@ -45,14 +45,15 @@ describe('issuing an MDOC', () => {
 
   it('should be verifiable', async () => {
     const verifier = new Verifier([ISSUER_CERTIFICATE]);
-    await verifier.verify(encoded, {
-      onCheck: (verification, original) => {
+    await verifier.verify(
+      encoded,
+      (verification, original) => {
         if (verification.category === 'DEVICE_AUTH') {
           return;
         }
         original(verification);
       },
-    });
+    );
   });
 
   it('should contain the validity info', () => {

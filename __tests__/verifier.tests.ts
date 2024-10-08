@@ -11,9 +11,10 @@ describe('verifier', () => {
       const trustedCerts: string[] = [];
 
       const verifier = new Verifier(trustedCerts);
-      await expect(verifier.verify(encodedDeviceResponse, {
-        ephemeralReaderKey, encodedSessionTranscript,
-      })).rejects.toThrow('No valid certificate paths found');
+      await expect(verifier
+        .usingEphemeralReaderKey(ephemeralReaderKey)
+        .usingSessionTranscriptBytes(encodedSessionTranscript)
+        .verify(encodedDeviceResponse)).rejects.toThrow('No valid certificate paths found');
     });
 
     it('should allow the caller to pass a custom onCheck function', async () => {
@@ -27,16 +28,18 @@ describe('verifier', () => {
       let called = false;
 
       try {
-        await verifier.verify(encodedDeviceResponse, {
-          ephemeralReaderKey,
-          encodedSessionTranscript,
-          onCheck: (verification) => {
-            if (verification.check.includes('Issuer certificate must be valid') &&
-              verification.status === 'FAILED') {
-              called = true;
-            }
-          },
-        });
+        await verifier
+          .usingEphemeralReaderKey(ephemeralReaderKey)
+          .usingSessionTranscriptBytes(encodedSessionTranscript)
+          .verify(
+            encodedDeviceResponse,
+            (verification) => {
+              if (verification.check.includes('Issuer certificate must be valid') &&
+                verification.status === 'FAILED') {
+                called = true;
+              }
+            },
+          );
       } catch (err) {
         // ignore err
       }

@@ -2,7 +2,9 @@
 
 [ISO 18013-5](https://www.iso.org/standard/69084.html) defines mDL (mobile Driver Licenses): an ISO standard for digital driver licenses.
 
-This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2023-08-02)**.
+This is a Node.js library to issue and verify mDL [CBOR encoded](https://cbor.io/) documents in accordance with **ISO 18013-7 (draft's date: 2024-02-13)**.
+
+> If you are working with the **2023 draft** make sure to use the `@auth0/mdl@v1` version.
 
 ## Installation
 
@@ -24,19 +26,40 @@ import fs from "node:fs";
 
   const trustedCerts = [fs.readFileSync('./caCert1.pem')/*, ... */];
   const verifier = new Verifier(trustedCerts);
-  const mdoc = await verifier.verify(encodedDeviceResponse, {
-    ephemeralReaderKey,
-    encodedSessionTranscript,
-  });
 
-  //at this point the issuer and device signature are valids.
+  let mdoc;
+
+  /** ... using OID4VP protocol (Annex B): */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForOID4VP(
+        mdocGeneratedNonce,    //
+        clientId,              // Parameters coming from
+        responseUri,           // the OID4VP transaction
+        verifierGeneratedNonce  //
+      )
+      .verify(encodedDeviceResponse);
+  }
+
+  /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForWebAPI(
+        encodedDeviceEngagement, // CBOR as received from the reader
+        encodedReaderEngagement, // CBOR as sent to the reader
+        encodedReaderPublicKey,  // as found in the ReaderEngagement
+      )
+      .verify(encodedDeviceResponse);
+  }
+
+  //at this point the issuer and device signature are valid.
   inspect(mdoc);
 })();
 ```
 
 ## Getting diagnostic information
-
-
 
 ```javascript
 import { Verifier } from "@auth0/mdl";
@@ -51,10 +74,32 @@ import fs from "node:fs";
   const trustedCerts = [fs.readFileSync('./caCert1.pem')/*, ... */];
   const verifier = new Verifier(trustedCerts);
 
-  const diagnosticInfo = await verifier.getDiagnosticInformation(encodedDeviceResponse, {
-    ephemeralReaderKey,
-    encodedSessionTranscript,
-  });
+  let diagnosticInfo;
+  
+    /** ... using OID4VP protocol (Annex B): */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForOID4VP(
+        mdocGeneratedNonce,    //
+        clientId,              // Parameters coming from
+        responseUri,           // the OID4VP transaction
+        verifierGeneratedNonce  //
+      )
+      .getDiagnosticInformation(encodedDeviceResponse);
+  }
+
+  /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
+  {
+    mdoc = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptForWebAPI(
+        encodedDeviceEngagement, // CBOR as received from the reader
+        encodedReaderEngagement, // CBOR as sent to the reader
+        encodedReaderPublicKey,  // as found in the ReaderEngagement
+      )
+      .getDiagnosticInformation(encodedDeviceResponse);
+  }
 
   inspect(diagnosticInfo);
 })();
@@ -149,39 +194,29 @@ import { createHash } from 'node:crypto';
       ],
     };
 
-    /** ... using a OID4VP handover: */
+    /** ... using OID4VP protocol (Annex B): */
     {
-      // Parameters coming from the OID4VP transaction
-      let mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce;
-
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptForOID4VP(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce)
+        .usingSessionTranscriptForOID4VP(
+          mdocGeneratedNonce,    //
+          clientId,              // Parameters coming from
+          responseUri,           // the OID4VP transaction
+          verifierGeneratedNonce  //
+        )
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }
 
-    /** ... OR ALTERNATIVELY using an "Annex A" transcript: */
+    /** ... OR ALTERNATIVELY using the Web API protocol (Annex A): */
     {
-      let encodedReaderEngagement; // CBOR as received from the reader
-      let encodedDeviceEngagement; // CBOR as sent to the reader
-      let encodedReaderPublicKey;  // as found in the ReaderEngagement
-
-      const engagementToApp = Buffer.from(
-        createHash('sha256').update(encodedReaderEngagement).digest('hex'),
-        'hex',
-      );
-      const sessionTranscriptBytes = cborEncode(
-        DataItem.fromData([
-          new DataItem({ buffer: encodedDeviceEngagement }),
-          new DataItem({ buffer: encodedReaderPublicKey }),
-          engagementToApp,
-        ]),
-      );
-
       deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
         .usingPresentationDefinition(presentationDefinition)
-        .usingSessionTranscriptForWebAPI(encodedDeviceEngagement, encodedReaderEngagement, encodedReaderPublicKey)
+        .usingSessionTranscriptForWebAPI(
+          encodedDeviceEngagement, // CBOR as received from the reader
+          encodedReaderEngagement, // CBOR as sent to the reader
+          encodedReaderPublicKey,  // as found in the ReaderEngagement
+        )
         .authenticateWithSignature(devicePrivateKey, 'ES256')
         .sign();
     }

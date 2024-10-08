@@ -11,6 +11,11 @@ const { subtle } = webcrypto;
 
 pkijs.setEngine('webcrypto', new pkijs.CryptoEngine({ name: 'webcrypto', crypto: webcrypto, subtle }));
 
+export async function sha256(data: Buffer): Promise<Buffer> {
+  const hash = await webcrypto.subtle.digest('sha-256', data);
+  return Buffer.from(hash);
+}
+
 export const hmacSHA256 = async (
   key: ArrayBuffer,
   data: ArrayBuffer,
@@ -50,7 +55,7 @@ export const calculateEphemeralMacKey = async (
     Buffer.from(publicKey).toString('hex'),
     true,
   ).slice(1);
-  const salt = new Uint8Array(await subtle.digest('SHA-256', sessionTranscriptBytes));
+  const salt = await sha256(Buffer.from(sessionTranscriptBytes));
   const info = Buffer.from('EMacKey', 'utf-8');
   const result = await hkdf('sha256', ikm, salt, info, 32);
   return result;
@@ -89,4 +94,38 @@ export function getRandomBytes(len: number) {
 export function fromPEM(pem: string): Uint8Array {
   const base64 = pem.replace(/-{5}(BEGIN|END) .*-{5}/gm, '').replace(/\s/gm, '');
   return Buffer.from(base64, 'base64');
+}
+
+export async function oid4vpTranscript(
+  mdocGeneratedNonce: string,
+  clientId: string,
+  responseUri: string,
+  verifierGeneratedNonce: string,
+) {
+  return cborEncode(
+    DataItem.fromData([
+      null, // deviceEngagementBytes
+      null, // eReaderKeyBytes
+      [
+        await sha256(cborEncode([clientId, mdocGeneratedNonce])),
+        await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
+        verifierGeneratedNonce,
+      ],
+    ]),
+  );
+}
+
+export async function webapiTranscript(
+  deviceEngagementBytes: Buffer,
+  readerEngagementBytes: Buffer,
+  eReaderKeyBytes: Buffer,
+) {
+  return sha256(readerEngagementBytes)
+    .then((readerEngagementBytesHash) => cborEncode(
+      DataItem.fromData([
+        new DataItem({ buffer: deviceEngagementBytes }),
+        new DataItem({ buffer: eReaderKeyBytes }),
+        readerEngagementBytesHash,
+      ]),
+    ));
 }

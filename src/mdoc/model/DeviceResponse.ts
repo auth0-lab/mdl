@@ -8,8 +8,7 @@ import { IssuerSignedDocument } from './IssuerSignedDocument';
 import { DeviceSignedDocument } from './DeviceSignedDocument';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import { parse } from '../parser';
-import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey } from '../utils';
-import { DataItem, cborEncode } from '../../cbor';
+import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey, oid4vpTranscript, webapiTranscript } from '../utils';
 import COSEKeyToRAW from '../../cose/coseKey';
 
 /**
@@ -18,7 +17,7 @@ import COSEKeyToRAW from '../../cose/coseKey';
 export class DeviceResponse {
   private mdoc: MDoc;
   private pd: PresentationDefinition;
-  private sessionTranscriptBytes: Buffer;
+  private sessionTranscriptBytes: Promise<Buffer> | Buffer;
   private useMac = true;
   private devicePrivateKey: Uint8Array;
   public deviceResponseCbor: Buffer;
@@ -65,23 +64,6 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response with the given handover data.
-   * this is a shortcut to calling {@link usingSessionTranscriptBytes}(`<cbor encoding of [null, null, handover] in a Tagged 24 structure>`),
-   * which is what the OID4VP protocol expects.
-   *
-   * @deprecated Use {@link usingSessionTranscriptForOID4VP} instead.
-   * @param {string[]} handover - The handover data to use in the session transcript.
-   * @returns {DeviceResponse}
-   */
-  public usingHandover(handover: string[]): DeviceResponse {
-    this.usingSessionTranscriptBytes(cborEncode(DataItem.fromData([
-      null, // deviceEngagementBytes
-      null, // eReaderKeyBytes
-      handover])));
-    return this;
-  }
-
-  /**
    * Set the session transcript data to use for the device response.
    *
    * This is arbitrary and should match the session transcript as it will be calculated by the verifier.
@@ -94,7 +76,7 @@ export class DeviceResponse {
    * @param {Buffer} sessionTranscriptBytes - The sessionTranscriptBytes data to use in the session transcript.
    * @returns {DeviceResponse}
    */
-  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer): DeviceResponse {
+  public usingSessionTranscriptBytes(sessionTranscriptBytes: Buffer | Promise<Buffer>): DeviceResponse {
     if (this.sessionTranscriptBytes) {
       throw new Error(
         'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
@@ -105,7 +87,7 @@ export class DeviceResponse {
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2023 draft.
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex B (OID4VP), 2024 draft.
    *
    * This should match the session transcript as it will be calculated by the verifier.
    *
@@ -122,19 +104,13 @@ export class DeviceResponse {
     verifierGeneratedNonce: string,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          null, // deviceEngagementBytes
-          null, // eReaderKeyBytes
-          [mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce],
-        ]),
-      ),
+      oid4vpTranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
     );
     return this;
   }
 
   /**
-   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2023 draft.
+   * Set the session transcript data to use for the device response as defined in ISO/IEC 18013-7 in Annex A (Web API), 2024 draft.
    *
    * This should match the session transcript as it will be calculated by the verifier.
    *
@@ -149,13 +125,7 @@ export class DeviceResponse {
     eReaderKeyBytes: Buffer,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      cborEncode(
-        DataItem.fromData([
-          new DataItem({ buffer: deviceEngagementBytes }),
-          new DataItem({ buffer: eReaderKeyBytes }),
-          readerEngagementBytes,
-        ]),
-      ),
+      webapiTranscript(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes),
     );
     return this;
   }
@@ -251,7 +221,7 @@ export class DeviceResponse {
 
   private async getDeviceSigned(docType: string): Promise<DeviceSigned> {
     const deviceAuthenticationBytes = calculateDeviceAutenticationBytes(
-      this.sessionTranscriptBytes,
+      await this.sessionTranscriptBytes,
       docType,
       this.nameSpaces,
     );
@@ -276,7 +246,7 @@ export class DeviceResponse {
     const ephemeralMacKey = await calculateEphemeralMacKey(
       key,
       this.ephemeralPublicKey,
-      sessionTranscriptBytes,
+      await sessionTranscriptBytes,
     );
 
     const mac = await Mac0.create(

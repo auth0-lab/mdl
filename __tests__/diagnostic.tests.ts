@@ -25,7 +25,10 @@ describe('diagnostic info', () => {
   let diagnosticInfo: DiagnosticInformation;
 
   beforeAll(async () => {
-    diagnosticInfo = await verifier.getDiagnosticInformation(deviceResponse, { ephemeralReaderKey, encodedSessionTranscript });
+    diagnosticInfo = await verifier
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptBytes(encodedSessionTranscript)
+      .getDiagnosticInformation(deviceResponse);
   });
 
   it('should return the version', async () => {
@@ -34,7 +37,10 @@ describe('diagnostic info', () => {
 
   it('should return the invalid signature reason when not providing the root certs', async () => {
     const verifier2 = new Verifier([]);
-    diagnosticInfo = await verifier2.getDiagnosticInformation(deviceResponse, { ephemeralReaderKey, encodedSessionTranscript });
+    diagnosticInfo = await verifier2
+      .usingEphemeralReaderKey(ephemeralReaderKey)
+      .usingSessionTranscriptBytes(encodedSessionTranscript)
+      .getDiagnosticInformation(deviceResponse);
     expect(diagnosticInfo.issuerSignature.reasons).toEqual([
       'No valid certificate paths found',
     ]);
