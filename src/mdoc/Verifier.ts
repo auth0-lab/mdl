@@ -9,7 +9,8 @@ import { MDoc } from './model/MDoc';
 import {
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
-  sha256,
+  oid4vpTranscript,
+  webapiTranscript,
 } from './utils';
 
 import {
@@ -23,7 +24,6 @@ import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedDocument } from './model/IssuerSignedDocument';
 import { DeviceSignedDocument } from './model/DeviceSignedDocument';
 import COSEKeyToRAW from '../cose/coseKey';
-import { cborEncode, DataItem } from '../cbor';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -354,28 +354,9 @@ export class Verifier {
     verifierGeneratedNonce: string,
   ): Verifier {
     this.usingSessionTranscriptBytes(
-      this.#oid4vptranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
+      oid4vpTranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
     );
     return this;
-  }
-
-  async #oid4vptranscript(
-    mdocGeneratedNonce: string,
-    clientId: string,
-    responseUri: string,
-    verifierGeneratedNonce: string,
-  ) {
-    return cborEncode(
-      DataItem.fromData([
-        null, // deviceEngagementBytes
-        null, // eReaderKeyBytes
-        [
-          await sha256(cborEncode([clientId, mdocGeneratedNonce])),
-          await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
-          verifierGeneratedNonce,
-        ],
-      ]),
-    );
   }
 
   /**
@@ -394,15 +375,7 @@ export class Verifier {
     eReaderKeyBytes: Buffer,
   ): Verifier {
     this.usingSessionTranscriptBytes(
-      sha256(readerEngagementBytes).then(
-        (readerEngagementBytesHash) => cborEncode(
-          DataItem.fromData([
-            new DataItem({ buffer: deviceEngagementBytes }),
-            new DataItem({ buffer: eReaderKeyBytes }),
-            readerEngagementBytesHash,
-          ]),
-        ),
-      ),
+      webapiTranscript(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes),
     );
     return this;
   }

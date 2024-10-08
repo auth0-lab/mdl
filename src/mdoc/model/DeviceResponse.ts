@@ -8,8 +8,7 @@ import { IssuerSignedDocument } from './IssuerSignedDocument';
 import { DeviceSignedDocument } from './DeviceSignedDocument';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import { parse } from '../parser';
-import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey, sha256 } from '../utils';
-import { DataItem, cborEncode } from '../../cbor';
+import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey, oid4vpTranscript, webapiTranscript } from '../utils';
 import COSEKeyToRAW from '../../cose/coseKey';
 
 /**
@@ -109,28 +108,9 @@ export class DeviceResponse {
     verifierGeneratedNonce: string,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      this.#oid4vptranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
+      oid4vpTranscript(mdocGeneratedNonce, clientId, responseUri, verifierGeneratedNonce),
     );
     return this;
-  }
-
-  async #oid4vptranscript(
-    mdocGeneratedNonce: string,
-    clientId: string,
-    responseUri: string,
-    verifierGeneratedNonce: string,
-  ) {
-    return cborEncode(
-      DataItem.fromData([
-        null, // deviceEngagementBytes
-        null, // eReaderKeyBytes
-        [
-          await sha256(cborEncode([clientId, mdocGeneratedNonce])),
-          await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
-          verifierGeneratedNonce,
-        ],
-      ]),
-    );
   }
 
   /**
@@ -149,15 +129,7 @@ export class DeviceResponse {
     eReaderKeyBytes: Buffer,
   ): DeviceResponse {
     this.usingSessionTranscriptBytes(
-      sha256(readerEngagementBytes).then(
-        (readerEngagementBytesHash) => cborEncode(
-          DataItem.fromData([
-            new DataItem({ buffer: deviceEngagementBytes }),
-            new DataItem({ buffer: eReaderKeyBytes }),
-            readerEngagementBytesHash,
-          ]),
-        ),
-      ),
+      webapiTranscript(deviceEngagementBytes, readerEngagementBytes, eReaderKeyBytes),
     );
     return this;
   }

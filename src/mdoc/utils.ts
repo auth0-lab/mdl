@@ -95,3 +95,37 @@ export function fromPEM(pem: string): Uint8Array {
   const base64 = pem.replace(/-{5}(BEGIN|END) .*-{5}/gm, '').replace(/\s/gm, '');
   return Buffer.from(base64, 'base64');
 }
+
+export async function oid4vpTranscript(
+  mdocGeneratedNonce: string,
+  clientId: string,
+  responseUri: string,
+  verifierGeneratedNonce: string,
+) {
+  return cborEncode(
+    DataItem.fromData([
+      null, // deviceEngagementBytes
+      null, // eReaderKeyBytes
+      [
+        await sha256(cborEncode([clientId, mdocGeneratedNonce])),
+        await sha256(cborEncode([responseUri, mdocGeneratedNonce])),
+        verifierGeneratedNonce,
+      ],
+    ]),
+  );
+}
+
+export async function webapiTranscript(
+  deviceEngagementBytes: Buffer,
+  readerEngagementBytes: Buffer,
+  eReaderKeyBytes: Buffer,
+) {
+  return sha256(readerEngagementBytes)
+    .then((readerEngagementBytesHash) => cborEncode(
+      DataItem.fromData([
+        new DataItem({ buffer: deviceEngagementBytes }),
+        new DataItem({ buffer: eReaderKeyBytes }),
+        readerEngagementBytesHash,
+      ]),
+    ));
+}
