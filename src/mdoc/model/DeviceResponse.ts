@@ -82,11 +82,7 @@ export class DeviceResponse {
         'A session transcript has already been set, either with .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes',
       );
     }
-    if (sessionTranscriptBytes instanceof Buffer) {
-      this.sessionTranscriptBytes = Promise.resolve(sessionTranscriptBytes);
-    } else {
-      this.sessionTranscriptBytes = sessionTranscriptBytes;
-    }
+    this.sessionTranscriptBytes = sessionTranscriptBytes;
     return this;
   }
 
