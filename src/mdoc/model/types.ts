@@ -119,7 +119,7 @@ export type MSO = {
   deviceKeyInfo?: DeviceKeyInfo;
 };
 
-export type DocType = 'org.iso.18013.5.1.mDL';
+export type DocType = 'org.iso.18013.5.1.mDL' | string;
 
 export type SupportedAlgs = 'ES256' | 'ES384' | 'ES512' | 'EdDSA';
 
