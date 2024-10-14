@@ -12,7 +12,6 @@ import {
 } from './utils';
 
 import {
-  ValidatedIssuerNameSpaces,
   DiagnosticInformation,
 } from './model/types';
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
@@ -237,7 +236,6 @@ export class Verifier {
     });
 
     const nameSpaces = mdoc.issuerSigned.nameSpaces || {};
-    const issuerNameSpaces: ValidatedIssuerNameSpaces = {};
 
     await Promise.all(Object.keys(nameSpaces).map(async (ns) => {
       onCheck({
@@ -273,25 +271,25 @@ export class Verifier {
             reason: "The 'issuing_country' and 'issuing_jurisdiction' cannot be verified because the DS certificate was not provided",
           });
         } else {
-          const isCountryInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_country')
-            .some((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
+          const invalidCountry = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_country')
+            .find((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
 
           onCheck({
-            status: isCountryInvalid ? 'FAILED' : 'PASSED',
+            status: invalidCountry ? 'FAILED' : 'PASSED',
             check: "The 'issuing_country' if present must match the 'countryName' in the subject field within the DS certificate",
-            reason: isCountryInvalid ?
-              `The 'issuing_country' (${issuerNameSpaces[ns].issuing_country}) must match the 'countryName' (${issuerAuth.countryName}) in the subject field within the issuer certificate` :
+            reason: invalidCountry ?
+              `The 'issuing_country' (${invalidCountry.ev.elementValue}) must match the 'countryName' (${issuerAuth.countryName}) in the subject field within the issuer certificate` :
               undefined,
           });
 
-          const isJurisdictionInvalid = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
-            .some((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
+          const invalidJurisdiction = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
+            .find((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
 
           onCheck({
-            status: isJurisdictionInvalid ? 'FAILED' : 'PASSED',
+            status: invalidJurisdiction ? 'FAILED' : 'PASSED',
             check: "The 'issuing_jurisdiction' if present must match the 'stateOrProvinceName' in the subject field within the DS certificate",
-            reason: isJurisdictionInvalid ?
-              `The 'issuing_jurisdiction' (${issuerNameSpaces[ns].issuing_jurisdiction}) must match the 'stateOrProvinceName' (${issuerAuth.stateOrProvince}) in the subject field within the issuer certificate` :
+            reason: invalidJurisdiction ?
+              `The 'issuing_jurisdiction' (${invalidJurisdiction.ev.elementValue}) must match the 'stateOrProvinceName' (${issuerAuth.stateOrProvince}) in the subject field within the issuer certificate` :
               undefined,
           });
         }
