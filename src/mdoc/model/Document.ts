@@ -1,7 +1,7 @@
 import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, ProtectedHeaders, UnprotectedHeaders } from 'cose-kit';
 import { fromPEM } from '../utils';
-import { DataItem, cborDecode, cborEncode } from '../../cbor';
+import { DataItem, DateOnly, cborDecode, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
 import IssuerAuth from './IssuerAuth';
 import { DeviceKeyInfo, DigestAlgorithm, DocType, IssuerNameSpaces, MSO, SupportedAlgs, ValidityInfo } from './types';
@@ -66,8 +66,24 @@ export class Document {
     this.#issuerNameSpaces[namespace] = this.#issuerNameSpaces[namespace] ?? [];
 
     const addAttribute = (key: string, value: any) => {
+      let elementValue = value;
+
+      if (namespace === DEFAULT_NS) {
+        // the following namespace attributes must be a full-date as specified in RFC 3339
+        if (['birth_date', 'issue_date', 'expiry_date'].includes(key) && typeof value === 'string') {
+          elementValue = new DateOnly(value);
+        }
+
+        if (key === 'driving_privileges' && Array.isArray(value)) {
+          value.forEach((v, i) => {
+            if (typeof v.issue_date === 'string') { elementValue[i].issue_date = new DateOnly(v.issue_date); }
+            if (typeof v.expiry_date === 'string') { elementValue[i].expiry_date = new DateOnly(v.expiry_date); }
+          });
+        }
+      }
+
       const digestID = this.#issuerNameSpaces[namespace].length;
-      const issuerSignedItem = IssuerSignedItem.create(digestID, key, value);
+      const issuerSignedItem = IssuerSignedItem.create(digestID, key, elementValue);
       this.#issuerNameSpaces[namespace].push(issuerSignedItem);
     };
 
