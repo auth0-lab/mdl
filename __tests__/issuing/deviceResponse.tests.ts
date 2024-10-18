@@ -1,6 +1,5 @@
-import { createHash, randomFillSync } from 'node:crypto';
+import { randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
-import { COSEKeyFromJWK } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -11,7 +10,6 @@ import {
 } from '../../src';
 import { DEVICE_JWK, ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
-import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const { d, ...publicKeyJWK } = DEVICE_JWK as jose.JWK;
 
@@ -19,6 +17,10 @@ describe('issuing a device response', () => {
   let encoded: Uint8Array;
   let parsedDocument: DeviceSignedDocument;
   let mdoc: MDoc;
+
+  const signed = new Date('2023-10-24T14:55:18Z');
+  const validUntil = new Date(signed);
+  validUntil.setFullYear(signed.getFullYear() + 30);
 
   beforeAll(async () => {
     const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
@@ -31,7 +33,7 @@ describe('issuing a device response', () => {
           given_name: 'Ava',
           birth_date: '2007-03-25',
           issue_date: '2023-09-01',
-          expiry_date: '2028-09-31',
+          expiry_date: '2028-09-30',
           issuing_country: 'US',
           issuing_authority: 'NY DMV',
           document_number: '01-856-5050',
@@ -39,8 +41,8 @@ describe('issuing a device response', () => {
           driving_privileges: [
             {
               vehicle_category_code: 'C',
-              issue_date: '2023-09-01',
-              expiry_date: '2028-09-31',
+              issue_date: '2022-09-02',
+              expiry_date: '2027-09-20',
             },
           ],
           un_distinguishing_sign: 'tbd-us.ny.dmv',
@@ -59,8 +61,8 @@ describe('issuing a device response', () => {
         })
         .useDigestAlgorithm('SHA-512')
         .addValidityInfo({
-          signed: new Date('2023-10-24'),
-          validUntil: new Date('2050-10-24'),
+          signed,
+          validUntil,
         })
         .addDeviceKeyInfo({ deviceKey: publicKeyJWK })
         .sign({
@@ -133,9 +135,10 @@ describe('issuing a device response', () => {
     it('should contain the validity info', () => {
       const { validityInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
       expect(validityInfo).toBeDefined();
-      expect(validityInfo.signed).toEqual(new Date('2023-10-24'));
-      expect(validityInfo.validFrom).toEqual(new Date('2023-10-24'));
-      expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
+      expect(validityInfo.signed).toEqual(signed);
+      expect(validityInfo.validFrom).toEqual(signed);
+      expect(validityInfo.validUntil).toEqual(validUntil);
+      expect(validityInfo.expectedUpdate).toBeUndefined();
     });
 
     it('should contain the device namespaces', () => {
@@ -217,9 +220,10 @@ describe('issuing a device response', () => {
     it('should contain the validity info', () => {
       const { validityInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
       expect(validityInfo).toBeDefined();
-      expect(validityInfo.signed).toEqual(new Date('2023-10-24'));
-      expect(validityInfo.validFrom).toEqual(new Date('2023-10-24'));
-      expect(validityInfo.validUntil).toEqual(new Date('2050-10-24'));
+      expect(validityInfo.signed).toEqual(signed);
+      expect(validityInfo.validFrom).toEqual(signed);
+      expect(validityInfo.validUntil).toEqual(validUntil);
+      expect(validityInfo.expectedUpdate).toBeUndefined();
     });
 
     it('should contain the device namespaces', () => {

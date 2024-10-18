@@ -1,6 +1,6 @@
 {
   "name": "@auth0/mdl",
-  "version": "0.4.0",
+  "version": "1.5.0",
   "description": "Parse and and validate MDOC CBOR encoded binaries according to ISO 18013-5.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -68,7 +68,7 @@
     "@panva/hkdf": "^1.1.1",
     "@peculiar/x509": "^1.9.5",
     "buffer": "^6.0.3",
-    "cbor-x": "^1.5.4",
+    "cbor-x": "^1.5.9",
     "compare-versions": "^6.0.0",
     "cose-kit": "^1.7.1",
     "debug": "^4.3.4",
