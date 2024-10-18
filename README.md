@@ -1,3 +1,5 @@
+[![npm version](https://badge.fury.io/js/@auth0%2Fmdl.svg)](https://badge.fury.io/js/@auth0%2Fmdl)
+
 # mDL
 
 [ISO 18013-5](https://www.iso.org/standard/69084.html) defines mDL (mobile Driver Licenses): an ISO standard for digital driver licenses.
