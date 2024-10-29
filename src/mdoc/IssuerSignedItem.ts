@@ -85,7 +85,7 @@ export class IssuerSignedItem {
     if (this.elementIdentifier === 'issuing_country') {
       return countryName === this.elementValue;
     }
-    if (this.elementIdentifier === 'issuing_jurisdiction') {
+    if (this.elementIdentifier === 'issuing_jurisdiction' && stateOrProvince) {
       return stateOrProvince === this.elementValue;
     }
     return undefined;

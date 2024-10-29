@@ -283,7 +283,7 @@ export class Verifier {
           });
 
           const invalidJurisdiction = verifications.filter((v) => v.ns === ns && v.ev.elementIdentifier === 'issuing_jurisdiction')
-            .find((v) => !v.isValid || !v.ev.matchCertificate(ns, issuerAuth));
+            .find((v) => !v.isValid || (issuerAuth.stateOrProvince && !v.ev.matchCertificate(ns, issuerAuth)));
 
           onCheck({
             status: invalidJurisdiction ? 'FAILED' : 'PASSED',
