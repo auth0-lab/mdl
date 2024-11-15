@@ -45,8 +45,8 @@ export const hmacSHA256 = async (
  * @returns {Uint8Array} - The ephemeral mac key
  */
 export const calculateEphemeralMacKey = async (
-  privateKey: Uint8Array,
-  publicKey: Uint8Array,
+  privateKey: Uint8Array | Map<number, Uint8Array | number>,
+  publicKey: Uint8Array | Map<number, Uint8Array | number>,
   sessionTranscriptBytes: Uint8Array,
 ): Promise<Uint8Array> => {
   const { kty, crv } = COSEKeyToJWK(privateKey);

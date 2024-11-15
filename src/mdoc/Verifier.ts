@@ -20,7 +20,6 @@ import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedDocument } from './model/IssuerSignedDocument';
 import { DeviceSignedDocument } from './model/DeviceSignedDocument';
-import { cborEncode } from '../cbor';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -197,7 +196,7 @@ export class Verifier {
     try {
       const ephemeralMacKey = await calculateEphemeralMacKey(
         options.ephemeralPrivateKey,
-        cborEncode(deviceKeyCoseKey),
+        deviceKeyCoseKey,
         options.sessionTranscriptBytes,
       );
 
