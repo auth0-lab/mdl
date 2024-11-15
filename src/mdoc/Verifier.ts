@@ -196,10 +196,13 @@ export class Verifier {
 
     try {
       const deviceKeyRaw = COSEKeyToRAW(deviceKeyCoseKey);
+      const { kty, crv } = COSEKeyToJWK(deviceKeyCoseKey);
       const ephemeralMacKey = await calculateEphemeralMacKey(
         options.ephemeralPrivateKey,
         deviceKeyRaw,
         options.sessionTranscriptBytes,
+        kty,
+        crv,
       );
 
       const isValid = await deviceAuth.deviceMac.verify(

@@ -271,12 +271,14 @@ export class DeviceResponse {
     sessionTranscriptBytes: any,
   ): Promise<DeviceAuth> {
     const key = COSEKeyToRAW(this.devicePrivateKey);
-    const { kid } = COSEKeyToJWK(this.devicePrivateKey);
+    const { kid, kty, crv } = COSEKeyToJWK(this.devicePrivateKey);
 
     const ephemeralMacKey = await calculateEphemeralMacKey(
       key,
       this.ephemeralPublicKey,
       sessionTranscriptBytes,
+      kty,
+      crv,
     );
 
     const mac = await Mac0.create(

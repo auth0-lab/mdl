@@ -1,5 +1,7 @@
 import * as pkijs from 'pkijs';
 import { p256 } from '@noble/curves/p256';
+import { p384 } from '@noble/curves/p384';
+import { p521 } from '@noble/curves/p521';
 import * as webcrypto from 'uncrypto';
 import { Buffer } from 'buffer';
 import hkdf from '@panva/hkdf';
@@ -44,12 +46,41 @@ export const calculateEphemeralMacKey = async (
   privateKey: Uint8Array,
   publicKey: Uint8Array,
   sessionTranscriptBytes: Uint8Array,
+  kty = 'EC',
+  crv = 'P-256',
 ): Promise<Uint8Array> => {
-  const ikm = p256.getSharedSecret(
-    Buffer.from(privateKey).toString('hex'),
-    Buffer.from(publicKey).toString('hex'),
-    true,
-  ).slice(1);
+  let ikm;
+  if ((kty === 'EC')) {
+    if (crv === 'P-256') {
+      ikm = p256
+        .getSharedSecret(
+          Buffer.from(privateKey).toString('hex'),
+          Buffer.from(publicKey).toString('hex'),
+          true,
+        )
+        .slice(1);
+    } else if (crv === 'P-384') {
+      ikm = p384
+        .getSharedSecret(
+          Buffer.from(privateKey).toString('hex'),
+          Buffer.from(publicKey).toString('hex'),
+          true,
+        )
+        .slice(1);
+    } else if (crv === 'P-521') {
+      ikm = p521
+        .getSharedSecret(
+          Buffer.from(privateKey).toString('hex'),
+          Buffer.from(publicKey).toString('hex'),
+          true,
+        )
+        .slice(1);
+    } else {
+      throw new Error(`unsupported EC curve: ${crv}`);
+    }
+  } else {
+    throw new Error(`unsupported key type: ${kty}`);
+  }
   const salt = new Uint8Array(await subtle.digest('SHA-256', sessionTranscriptBytes));
   const info = Buffer.from('EMacKey', 'utf-8');
   const result = await hkdf('sha256', ikm, salt, info, 32);
