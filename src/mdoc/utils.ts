@@ -5,9 +5,11 @@ import { p521 } from '@noble/curves/p521';
 import * as webcrypto from 'uncrypto';
 import { Buffer } from 'buffer';
 import hkdf from '@panva/hkdf';
+import { COSEKeyToJWK } from 'cose-kit';
 
 import { cborEncode, cborDecode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
+import COSEKeyToRAW from '../cose/coseKey';
 
 const { subtle } = webcrypto;
 
@@ -37,8 +39,8 @@ export const hmacSHA256 = async (
  * 1. SDeviceKey.Priv and EReaderKey.Pub for the mdoc
  * 2. EReaderKey.Priv and SDeviceKey.Pub for the mdoc reader
  *
- * @param {Uint8Array} privateKey - The private key of the current party
- * @param {Uint8Array} publicKey - The public key of the other party
+ * @param {Uint8Array} privateKey - The private key of the current party (COSE)
+ * @param {Uint8Array} publicKey - The public key of the other party, (COSE)
  * @param {Uint8Array} sessionTranscriptBytes - The session transcript bytes
  * @returns {Uint8Array} - The ephemeral mac key
  */
@@ -46,32 +48,33 @@ export const calculateEphemeralMacKey = async (
   privateKey: Uint8Array,
   publicKey: Uint8Array,
   sessionTranscriptBytes: Uint8Array,
-  kty = 'EC',
-  crv = 'P-256',
 ): Promise<Uint8Array> => {
+  const { kty, crv } = COSEKeyToJWK(privateKey);
+  const privkey = COSEKeyToRAW(privateKey); // only d
+  const pubkey = COSEKeyToRAW(publicKey); // 0x04 || x || y
   let ikm;
   if ((kty === 'EC')) {
     if (crv === 'P-256') {
       ikm = p256
         .getSharedSecret(
-          Buffer.from(privateKey).toString('hex'),
-          Buffer.from(publicKey).toString('hex'),
+          Buffer.from(privkey).toString('hex'),
+          Buffer.from(pubkey).toString('hex'),
           true,
         )
         .slice(1);
     } else if (crv === 'P-384') {
       ikm = p384
         .getSharedSecret(
-          Buffer.from(privateKey).toString('hex'),
-          Buffer.from(publicKey).toString('hex'),
+          Buffer.from(privkey).toString('hex'),
+          Buffer.from(pubkey).toString('hex'),
           true,
         )
         .slice(1);
     } else if (crv === 'P-521') {
       ikm = p521
         .getSharedSecret(
-          Buffer.from(privateKey).toString('hex'),
-          Buffer.from(publicKey).toString('hex'),
+          Buffer.from(privkey).toString('hex'),
+          Buffer.from(pubkey).toString('hex'),
           true,
         )
         .slice(1);

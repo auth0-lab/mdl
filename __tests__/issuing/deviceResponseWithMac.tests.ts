@@ -11,7 +11,6 @@ import {
 } from '../../src';
 import { ISSUER_CERTIFICATE, ISSUER_PRIVATE_KEY_JWK, PRESENTATION_DEFINITION_1 } from './config';
 import { DataItem, cborEncode } from '../../src/cbor';
-import COSEKeyToRAW from '../../src/cose/coseKey';
 
 const curves = [
   { name: 'P-256', alg: 'ECDH-ES', opts: { crv: 'P-256' } },
@@ -96,8 +95,8 @@ curves.forEach((c) => {
         const readerKeypair = await jose.generateKeyPair(c.alg, c.opts);
         const readerKey = await jose.exportJWK(readerKeypair.privateKey);
         const { d: _1, ...pubKey } = readerKey;
-        readerPrivateKey = COSEKeyToRAW(COSEKeyFromJWK(readerKey)); // only d
-        readerPublicKey = COSEKeyToRAW(COSEKeyFromJWK(pubKey)); // 0x04 || x || y
+        readerPrivateKey = COSEKeyFromJWK(readerKey);
+        readerPublicKey = COSEKeyFromJWK(pubKey);
       }
     });
 
