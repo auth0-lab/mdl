@@ -20,7 +20,6 @@ import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
 import { IssuerSignedDocument } from './model/IssuerSignedDocument';
 import { DeviceSignedDocument } from './model/DeviceSignedDocument';
-import COSEKeyToRAW from '../cose/coseKey';
 
 const MDL_NAMESPACE = 'org.iso.18013.5.1';
 
@@ -195,10 +194,9 @@ export class Verifier {
     if (!options.ephemeralPrivateKey) { return; }
 
     try {
-      const deviceKeyRaw = COSEKeyToRAW(deviceKeyCoseKey);
       const ephemeralMacKey = await calculateEphemeralMacKey(
         options.ephemeralPrivateKey,
-        deviceKeyRaw,
+        deviceKeyCoseKey,
         options.sessionTranscriptBytes,
       );
 
