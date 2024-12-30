@@ -89,7 +89,8 @@ export class Document {
 
     for (const [key, value] of Object.entries(values)) {
       addAttribute(key, value);
-      if (key === 'birth_date') {
+
+      if (key === 'birth_date' && namespace === DEFAULT_NS) {
         const ageInYears = getAgeInYears(value);
         addAttribute('age_over_21', ageInYears >= 21);
         addAttribute(`age_over_${Math.floor(ageInYears)}`, true);
