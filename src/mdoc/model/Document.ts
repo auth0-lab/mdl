@@ -9,15 +9,6 @@ import { IssuerSignedDocument } from './IssuerSignedDocument';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
 
-const getAgeInYears = (birth: string): number => {
-  const birthDate = new Date(birth);
-  birthDate.setHours(0, 0, 0, 0);
-  // @ts-ignore
-  const ageDifMs = Date.now() - birthDate;
-  const ageDate = new Date(ageDifMs);
-  return Math.abs(ageDate.getUTCFullYear() - 1970);
-};
-
 const addYears = (date: Date, years: number): Date => {
   const r = new Date(date.getTime());
   r.setFullYear(date.getFullYear() + years);
@@ -89,12 +80,6 @@ export class Document {
 
     for (const [key, value] of Object.entries(values)) {
       addAttribute(key, value);
-
-      if (key === 'birth_date' && namespace === DEFAULT_NS) {
-        const ageInYears = getAgeInYears(value);
-        addAttribute('age_over_21', ageInYears >= 21);
-        addAttribute(`age_over_${Math.floor(ageInYears)}`, true);
-      }
     }
 
     return this;
