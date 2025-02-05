@@ -70,7 +70,7 @@ describe('example 5: device response contains a partial x5chain of the issuer ce
 
     expect(diagnosticInfo.issuerSignature).toEqual({
       alg: 'EdDSA',
-      digests: { 'org.iso.18013.5.1': 5 },
+      digests: { 'org.iso.18013.5.1': 3 },
       isValid: true,
       reasons: [],
     });

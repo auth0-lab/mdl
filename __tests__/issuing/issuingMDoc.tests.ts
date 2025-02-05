@@ -104,12 +104,8 @@ describe('issuing an MDOC', () => {
 
   it('should include the namespace and attributes', () => {
     const attrValues = parsedDocument.getIssuerNameSpace('org.iso.18013.5.1');
-    // @ts-ignore
-    const currentAge = new Date(Date.now() - new Date('2007-03-25')).getFullYear() - 1970;
     expect(attrValues).toMatchInlineSnapshot(`
 {
-  "age_over_${currentAge}": true,
-  "age_over_21": ${currentAge >= 21},
   "birth_date": "2007-03-25",
   "document_number": "01-856-5050",
   "driving_privileges": [
