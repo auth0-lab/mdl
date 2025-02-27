@@ -28,14 +28,14 @@ export class DeviceSignedDocument extends IssuerSignedDocument {
     if (deviceSignature) {
       deviceSignature[2] = null;
     }
-    //
+
     doc.set('deviceSigned', {
       ...this.deviceSigned,
       nameSpaces: DataItem.fromData(this.deviceSigned.nameSpaces),
       deviceAuth: {
         ...this.deviceSigned.deviceAuth,
-        deviceSignature,
-        deviceMac,
+        ...(deviceSignature ? { deviceSignature } : {}),
+        ...(deviceMac ? { deviceMac } : {}),
       },
     });
     return doc;
