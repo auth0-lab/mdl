@@ -28,7 +28,6 @@ export class Document {
     signed: new Date(),
     validFrom: new Date(),
     validUntil: addYears(new Date(), 1),
-    expectedUpdate: null,
   };
   #digestAlgorithm: DigestAlgorithm = 'SHA-256';
 
@@ -126,7 +125,7 @@ export class Document {
    * @param {Date} [info.signed] - The date the document is signed. default: now
    * @param {Date} [info.validFrom] - The date the document is valid from. default: signed
    * @param {Date} [info.validUntil] - The date the document is valid until. default: signed + 1 year
-   * @param {Date} [info.expectedUpdate] - The date the document is expected to be updated. default: null
+   * @param {Date} [info.expectedUpdate] - [Optional] The date the document is expected to be re-signed and potentially have its data updated.
    * @returns
    */
   addValidityInfo(info: Partial<ValidityInfo> = {}): Document {
@@ -137,8 +136,12 @@ export class Document {
       signed,
       validFrom,
       validUntil,
-      expectedUpdate: info.expectedUpdate,
     };
+
+    if (info.expectedUpdate) {
+      this.#validityInfo.expectedUpdate = info.expectedUpdate;
+    }
+
     return this;
   }
 

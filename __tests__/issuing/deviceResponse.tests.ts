@@ -138,7 +138,7 @@ describe('issuing a device response', () => {
       expect(validityInfo.signed).toEqual(signed);
       expect(validityInfo.validFrom).toEqual(signed);
       expect(validityInfo.validUntil).toEqual(validUntil);
-      expect(validityInfo.expectedUpdate).toBeUndefined();
+      expect(validityInfo).not.toHaveProperty('expectedUpdate');
     });
 
     it('should contain the device namespaces', () => {
@@ -223,7 +223,7 @@ describe('issuing a device response', () => {
       expect(validityInfo.signed).toEqual(signed);
       expect(validityInfo.validFrom).toEqual(signed);
       expect(validityInfo.validUntil).toEqual(validUntil);
-      expect(validityInfo.expectedUpdate).toBeUndefined();
+      expect(validityInfo).not.toHaveProperty('expectedUpdate');
     });
 
     it('should contain the device namespaces', () => {
