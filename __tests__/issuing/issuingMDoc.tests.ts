@@ -20,6 +20,8 @@ describe('issuing an MDOC', () => {
   validFrom.setMinutes(signed.getMinutes() + 5);
   const validUntil = new Date(signed);
   validUntil.setFullYear(signed.getFullYear() + 30);
+  const expectedUpdate = new Date(signed);
+  expectedUpdate.setFullYear(signed.getFullYear() + 1);
 
   beforeAll(async () => {
     const issuerPrivateKey = ISSUER_PRIVATE_KEY_JWK;
@@ -53,6 +55,7 @@ describe('issuing an MDOC', () => {
         signed,
         validFrom,
         validUntil,
+        expectedUpdate,
       })
       .addDeviceKeyInfo({ deviceKey: publicKeyJWK })
       .sign({
@@ -86,7 +89,7 @@ describe('issuing an MDOC', () => {
     expect(validityInfo.signed).toEqual(signed);
     expect(validityInfo.validFrom).toEqual(validFrom);
     expect(validityInfo.validUntil).toEqual(validUntil);
-    expect(validityInfo.expectedUpdate).toBeUndefined();
+    expect(validityInfo.expectedUpdate).toEqual(expectedUpdate);
   });
 
   it('should use the correct digest alg', () => {
