@@ -14,7 +14,7 @@ import {
 import {
   DiagnosticInformation,
 } from './model/types';
-import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
+import { UserDefinedVerificationCallback, VerificationAssessment, VerificationAssessmentId, buildCallback, onCatCheck } from './checkCallback';
 
 import { parse } from './parser';
 import IssuerAuth from './model/IssuerAuth';
@@ -54,11 +54,13 @@ export class Verifier {
         onCheck({
           status: 'PASSED',
           check: 'Issuer certificate must be valid',
+          id: VerificationAssessmentId.ISSUER_AUTH.IssuerCertificateValidity,
         });
       } catch (err) {
         onCheck({
           status: 'FAILED',
           check: 'Issuer certificate must be valid',
+          id: VerificationAssessmentId.ISSUER_AUTH.IssuerCertificateValidity,
           reason: err.message,
         });
       }
@@ -68,6 +70,7 @@ export class Verifier {
     onCheck({
       status: verificationResult ? 'PASSED' : 'FAILED',
       check: 'Issuer signature must be valid',
+      id: VerificationAssessmentId.ISSUER_AUTH.IssuerSignatureValidity,
     });
 
     // Validity
@@ -77,18 +80,21 @@ export class Verifier {
     onCheck({
       status: certificate && validityInfo && (validityInfo.signed < certificate.notBefore || validityInfo.signed > certificate.notAfter) ? 'FAILED' : 'PASSED',
       check: 'The MSO signed date must be within the validity period of the certificate',
+      id: VerificationAssessmentId.ISSUER_AUTH.MsoSignedDateWithinCertificateValidity,
       reason: `The MSO signed date (${validityInfo.signed.toUTCString()}) must be within the validity period of the certificate (${certificate.notBefore.toUTCString()} to ${certificate.notAfter.toUTCString()})`,
     });
 
     onCheck({
       status: validityInfo && (now < validityInfo.validFrom || now > validityInfo.validUntil) ? 'FAILED' : 'PASSED',
       check: 'The MSO must be valid at the time of verification',
+      id: VerificationAssessmentId.ISSUER_AUTH.MsoValidityAtVerificationTime,
       reason: `The MSO must be valid at the time of verification (${now.toUTCString()})`,
     });
 
     onCheck({
       status: countryName ? 'PASSED' : 'FAILED',
       check: 'Country name (C) must be present in the issuer certificate\'s subject distinguished name',
+      id: VerificationAssessmentId.ISSUER_AUTH.IssuerSubjectCountryNamePresence,
     });
   }
 
@@ -106,6 +112,7 @@ export class Verifier {
       onCheck({
         status: 'FAILED',
         check: 'The document is not signed by the device.',
+        id: VerificationAssessmentId.DEVICE_AUTH.DocumentDeviceSignaturePresence,
       });
       return;
     }
@@ -119,6 +126,7 @@ export class Verifier {
       onCheck({
         status: 'FAILED',
         check: 'Device Auth must contain a deviceSignature or deviceMac element',
+        id: VerificationAssessmentId.DEVICE_AUTH.DeviceAuthSignatureOrMacPresence,
       });
       return;
     }
@@ -127,6 +135,7 @@ export class Verifier {
       onCheck({
         status: 'FAILED',
         check: 'Session Transcript Bytes missing from options, aborting device signature check',
+        id: VerificationAssessmentId.DEVICE_AUTH.SessionTranscriptProvided,
       });
       return;
     }
@@ -141,6 +150,7 @@ export class Verifier {
       onCheck({
         status: 'FAILED',
         check: 'Issuer signature must contain the device key.',
+        id: VerificationAssessmentId.DEVICE_AUTH.DeviceKeyAvailableInIssuerAuth,
         reason: 'Unable to verify deviceAuth signature: missing device key in issuerAuth',
       });
       return;
@@ -163,11 +173,13 @@ export class Verifier {
         onCheck({
           status: verificationResult ? 'PASSED' : 'FAILED',
           check: 'Device signature must be valid',
+          id: VerificationAssessmentId.DEVICE_AUTH.DeviceSignatureValidity,
         });
       } catch (err) {
         onCheck({
           status: 'FAILED',
           check: 'Device signature must be valid',
+          id: VerificationAssessmentId.DEVICE_AUTH.DeviceSignatureValidity,
           reason: `Unable to verify deviceAuth signature (ECDSA/EdDSA): ${err.message}`,
         });
       }
@@ -178,18 +190,21 @@ export class Verifier {
     onCheck({
       status: deviceAuth.deviceMac ? 'PASSED' : 'FAILED',
       check: 'Device MAC must be present when using MAC authentication',
+      id: VerificationAssessmentId.DEVICE_AUTH.DeviceMacPresence,
     });
     if (!deviceAuth.deviceMac) { return; }
 
     onCheck({
       status: deviceAuth.deviceMac.hasSupportedAlg() ? 'PASSED' : 'FAILED',
       check: 'Device MAC must use alg 5 (HMAC 256/256)',
+      id: VerificationAssessmentId.DEVICE_AUTH.DeviceMacAlgorithmCorrectness,
     });
     if (!deviceAuth.deviceMac.hasSupportedAlg()) { return; }
 
     onCheck({
       status: options.ephemeralPrivateKey ? 'PASSED' : 'FAILED',
       check: 'Ephemeral private key must be present when using MAC authentication',
+      id: VerificationAssessmentId.DEVICE_AUTH.EphemeralKeyPresence,
     });
     if (!options.ephemeralPrivateKey) { return; }
 
@@ -209,11 +224,13 @@ export class Verifier {
       onCheck({
         status: isValid ? 'PASSED' : 'FAILED',
         check: 'Device MAC must be valid',
+        id: VerificationAssessmentId.DEVICE_AUTH.DeviceMacValidity,
       });
     } catch (err) {
       onCheck({
         status: 'FAILED',
         check: 'Device MAC must be valid',
+        id: VerificationAssessmentId.DEVICE_AUTH.DeviceMacValidity,
         reason: `Unable to verify deviceAuth MAC: ${err.message}`,
       });
     }
@@ -231,6 +248,7 @@ export class Verifier {
     onCheck({
       status: digestAlgorithm && DIGEST_ALGS[digestAlgorithm] ? 'PASSED' : 'FAILED',
       check: 'Issuer Auth must include a supported digestAlgorithm element',
+      id: VerificationAssessmentId.DATA_INTEGRITY.IssuerAuthDigestAlgorithmSupported,
     });
 
     const nameSpaces = mdoc.issuerSigned.nameSpaces || {};
@@ -239,6 +257,7 @@ export class Verifier {
       onCheck({
         status: valueDigests.has(ns) ? 'PASSED' : 'FAILED',
         check: `Issuer Auth must include digests for namespace: ${ns}`,
+        id: VerificationAssessmentId.DATA_INTEGRITY.IssuerAuthNamespaceDigestPresence,
       });
 
       const verifications = await Promise.all(nameSpaces[ns].map(async (ev) => {
@@ -250,6 +269,7 @@ export class Verifier {
         onCheck({
           status: 'PASSED',
           check: `The calculated digest for ${ns}/${v.ev.elementIdentifier} attribute must match the digest in the issuerAuth element`,
+          id: VerificationAssessmentId.DATA_INTEGRITY.AttributeDigestMatch,
         });
       });
 
@@ -257,6 +277,7 @@ export class Verifier {
         onCheck({
           status: 'FAILED',
           check: `The calculated digest for ${ns}/${v.ev.elementIdentifier} attribute must match the digest in the issuerAuth element`,
+          id: VerificationAssessmentId.DATA_INTEGRITY.AttributeDigestMatch,
         });
       });
 
@@ -266,6 +287,7 @@ export class Verifier {
           onCheck({
             status: 'FAILED',
             check: "The 'issuing_country' if present must match the 'countryName' in the subject field within the DS certificate",
+            id: VerificationAssessmentId.DATA_INTEGRITY.IssuingCountryMatchesCertificate,
             reason: "The 'issuing_country' and 'issuing_jurisdiction' cannot be verified because the DS certificate was not provided",
           });
         } else {
@@ -275,6 +297,7 @@ export class Verifier {
           onCheck({
             status: invalidCountry ? 'FAILED' : 'PASSED',
             check: "The 'issuing_country' if present must match the 'countryName' in the subject field within the DS certificate",
+            id: VerificationAssessmentId.DATA_INTEGRITY.IssuingCountryMatchesCertificate,
             reason: invalidCountry ?
               `The 'issuing_country' (${invalidCountry.ev.elementValue}) must match the 'countryName' (${issuerAuth.countryName}) in the subject field within the issuer certificate` :
               undefined,
@@ -286,6 +309,7 @@ export class Verifier {
           onCheck({
             status: invalidJurisdiction ? 'FAILED' : 'PASSED',
             check: "The 'issuing_jurisdiction' if present must match the 'stateOrProvinceName' in the subject field within the DS certificate",
+            id: VerificationAssessmentId.DATA_INTEGRITY.IssuingJurisdictionMatchesCertificate,
             reason: invalidJurisdiction ?
               `The 'issuing_jurisdiction' (${invalidJurisdiction.ev.elementValue}) must match the 'stateOrProvinceName' (${issuerAuth.stateOrProvince}) in the subject field within the issuer certificate` :
               undefined,
@@ -318,18 +342,21 @@ export class Verifier {
     onCheck({
       status: dr.version ? 'PASSED' : 'FAILED',
       check: 'Device Response must include "version" element.',
+      id: VerificationAssessmentId.DOCUMENT_FORMAT.DeviceResponseVersionPresence,
       category: 'DOCUMENT_FORMAT',
     });
 
     onCheck({
       status: compareVersions(dr.version, '1.0') >= 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response version must be 1.0 or greater',
+      id: VerificationAssessmentId.DOCUMENT_FORMAT.DeviceResponseVersionSupported,
       category: 'DOCUMENT_FORMAT',
     });
 
     onCheck({
       status: dr.documents && dr.documents.length > 0 ? 'PASSED' : 'FAILED',
       check: 'Device Response must include at least one document.',
+      id: VerificationAssessmentId.DOCUMENT_FORMAT.DeviceResponseDocumentPresence,
       category: 'DOCUMENT_FORMAT',
     });
 
@@ -359,6 +386,7 @@ export class Verifier {
   ): Promise<DiagnosticInformation> {
     const dr: VerificationAssessment[] = [];
     const decoded = await this.verify(
+      // @ts-ignore
       encodedDeviceResponse,
       {
         ...options,
