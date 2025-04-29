@@ -31,8 +31,11 @@ describe('verifier', () => {
           ephemeralReaderKey,
           encodedSessionTranscript,
           onCheck: (verification) => {
-            if (verification.check.includes('Issuer certificate must be valid') &&
-              verification.status === 'FAILED') {
+            if (
+              verification.id === 'ISSUER_CERTIFICATE_VALIDITY' &&
+              verification.check.includes('Issuer certificate must be valid') &&
+              verification.status === 'FAILED'
+            ) {
               called = true;
             }
           },
