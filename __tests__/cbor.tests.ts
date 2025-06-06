@@ -1,6 +1,6 @@
 import { hex } from 'buffer-tag';
 
-import { cborDecode, cborEncode, DataItem } from '../src/cbor';
+import { cborDecode, cborEncode, DataItem, getCborEncodeDecodeOptions, setCborEncodeDecodeOptions } from '../src/cbor';
 
 describe('cbor', () => {
   it('should properly decode a nested map', () => {
@@ -16,6 +16,18 @@ describe('cbor', () => {
     const decoded = cborDecode(encoded);
     const reEncode = cborEncode(decoded);
     expect(reEncode.toString('hex')).toBe(encoded.toString('hex'));
+    expect(encoded[3].toString(16)).toBe('b9'); // Large Map
+  });
+
+  it('should properly encoded and decoded maps using variableMapSize=true', () => {
+    const options = getCborEncodeDecodeOptions();
+    options.variableMapSize = true;
+    setCborEncodeDecodeOptions(options);
+    const encoded = cborEncode(DataItem.fromData({ foo: 'baz' }));
+    const decoded = cborDecode(encoded);
+    const reEncode = cborEncode(decoded);
+    expect(reEncode.toString('hex')).toBe(encoded.toString('hex'));
+    expect(encoded[3].toString(16)).toBe('a1'); // Map with one item
   });
 
   it('should properly encoded and decoded with arrays', () => {
