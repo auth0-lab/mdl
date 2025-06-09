@@ -33,7 +33,7 @@ export class DateOnly extends Date {
   }
 }
 
-const encoderDefaults: Options = {
+let encoderDefaults: Options = {
   tagUint8Array: false,
   useRecords: false,
   mapsAsObjects: false,
@@ -58,6 +58,14 @@ addExtension({
   encode: (date: DateOnly, encode) => encode(date.toISOString()),
   decode: (isoStringDate: any): Object => new DateOnly(isoStringDate),
 });
+
+export const getCborEncodeDecodeOptions = () : Options => {
+  return encoderDefaults;
+};
+
+export const setCborEncodeDecodeOptions = (options: Options) : void => {
+  encoderDefaults = options;
+};
 
 export const cborDecode = (
   input: Buffer | Uint8Array,

@@ -9,3 +9,4 @@ export { DeviceSignedDocument } from './mdoc/model/DeviceSignedDocument';
 export { DeviceResponse } from './mdoc/model/DeviceResponse';
 export { MDLError, MDLParseError } from './mdoc/errors';
 export { VerificationAssessmentId } from './mdoc/checkCallback';
+export { getCborEncodeDecodeOptions, setCborEncodeDecodeOptions } from './cbor';
