@@ -1,3 +1,4 @@
+export { getCborEncodeDecodeOptions, setCborEncodeDecodeOptions } from './cbor';
 export { Verifier } from './mdoc/Verifier';
 export { parse } from './mdoc/parser';
 export { DataItem } from './cbor/DataItem';
