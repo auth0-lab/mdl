@@ -163,14 +163,14 @@ export class Document {
    *
    * @param {Object} params - The parameters object
    * @param {jose.JWK | Uint8Array} params.issuerPrivateKey - The issuer's private key either in JWK format or COSE_KEY format as buffer.
-   * @param {string | Uint8Array} params.issuerCertificate - The issuer's certificate in pem format or as a buffer.
+   * @param {string | Uint8Array | Array<string | Uint8Array>} params.issuerCertificate - The issuer's certificate in pem format, as a buffer, or an array.
    * @param {SupportedAlgs} params.alg - The algorhitm used for the MSO signature.
    * @param {string | Uint8Array} [params.kid] - The key id of the issuer's private key. default: issuerPrivateKey.kid
    * @returns {Promise<IssuerSignedDoc>} - The signed document
    */
   async sign(params: {
     issuerPrivateKey: jose.JWK | Uint8Array,
-    issuerCertificate: string | Uint8Array,
+    issuerCertificate: string | Uint8Array | Array<string | Uint8Array>,
     alg: SupportedAlgs,
     kid?: string | Uint8Array,
   }): Promise<IssuerSignedDocument> {
@@ -178,9 +178,15 @@ export class Document {
       throw new Error('No namespaces added');
     }
 
-    const issuerPublicKeyBuffer = typeof params.issuerCertificate === 'string' ?
-      fromPEM(params.issuerCertificate) :
-      params.issuerCertificate;
+    let issuerCertificateChain: Uint8Array[];
+
+    if (Array.isArray(params.issuerCertificate)) {
+      issuerCertificateChain = params.issuerCertificate.flatMap((cert) => (typeof cert === 'string' ? fromPEM(cert) : [cert]));
+    } else if (typeof params.issuerCertificate === 'string') {
+      issuerCertificateChain = fromPEM(params.issuerCertificate);
+    } else {
+      issuerCertificateChain = [params.issuerCertificate];
+    }
 
     const issuerPrivateKeyJWK = params.issuerPrivateKey instanceof Uint8Array ?
       COSEKeyToJWK(params.issuerPrivateKey) :
@@ -210,7 +216,7 @@ export class Document {
     const protectedHeader: ProtectedHeaders = { alg: params.alg };
     const unprotectedHeader: UnprotectedHeaders = {
       kid: params.kid ?? issuerPrivateKeyJWK.kid,
-      x5chain: [issuerPublicKeyBuffer],
+      x5chain: issuerCertificateChain,
     };
 
     const issuerAuth = await IssuerAuth.sign(
