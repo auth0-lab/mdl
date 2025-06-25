@@ -216,7 +216,7 @@ export class Document {
     const protectedHeader: ProtectedHeaders = { alg: params.alg };
     const unprotectedHeader: UnprotectedHeaders = {
       kid: params.kid ?? issuerPrivateKeyJWK.kid,
-      x5chain: issuerCertificateChain,
+      x5chain: issuerCertificateChain.length === 1 ? issuerCertificateChain[0] : issuerCertificateChain,
     };
 
     const issuerAuth = await IssuerAuth.sign(
