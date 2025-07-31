@@ -1,6 +1,6 @@
 import { hex } from 'buffer-tag';
 
-import { cborDecode, cborEncode, DataItem, getCborEncodeDecodeOptions, setCborEncodeDecodeOptions } from '../src/cbor';
+import { cborDecode, cborEncode, DataItem } from '../src/cbor';
 
 describe('cbor', () => {
   it('should properly decode a nested map', () => {
@@ -11,23 +11,25 @@ describe('cbor', () => {
     expect(decoded.data.get('foo')?.data.get('bar')).toBe('baz');
   });
 
-  it('should properly encoded and decoded maps', () => {
-    const encoded = cborEncode(DataItem.fromData({ foo: 'baz' }));
+  it('should properly encoded and decoded maps (length <= 23)', () => {
+    const length = 23;
+    const obj = Object.fromEntries(Array.from({ length }, (_, i) => [`key${i}`, i]));
+    const encoded = cborEncode(DataItem.fromData(obj));
     const decoded = cborDecode(encoded);
     const reEncode = cborEncode(decoded);
     expect(reEncode.toString('hex')).toBe(encoded.toString('hex'));
-    expect(encoded[3].toString(16)).toBe('b9'); // Large Map
+    expect(encoded[4].toString(16)).toBe((0xA0 + length).toString(16));
   });
 
-  it('should properly encoded and decoded maps using variableMapSize=true', () => {
-    const options = getCborEncodeDecodeOptions();
-    options.variableMapSize = true;
-    setCborEncodeDecodeOptions(options);
-    const encoded = cborEncode(DataItem.fromData({ foo: 'baz' }));
+  it('should properly encoded and decoded maps (length > 23)', () => {
+    const length = 24;
+    const obj = Object.fromEntries(Array.from({ length }, (_, i) => [`key${i}`, i]));
+    const encoded = cborEncode(DataItem.fromData(obj));
     const decoded = cborDecode(encoded);
     const reEncode = cborEncode(decoded);
     expect(reEncode.toString('hex')).toBe(encoded.toString('hex'));
-    expect(encoded[3].toString(16)).toBe('a1'); // Map with one item
+    expect(encoded[4].toString(16)).toBe('b8');
+    expect(encoded[5].toString(16)).toBe(length.toString(16));
   });
 
   it('should properly encoded and decoded with arrays', () => {
