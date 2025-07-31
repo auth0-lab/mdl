@@ -39,6 +39,7 @@ let encoderDefaults: Options = {
   mapsAsObjects: false,
   // @ts-ignore
   useTag259ForMaps: false,
+  variableMapSize: true,
 };
 
 // tdate data item shall contain a date-time string as specified in RFC 3339 (with no fraction of seconds)

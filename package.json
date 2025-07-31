@@ -68,7 +68,7 @@
     "@panva/hkdf": "^1.1.1",
     "@peculiar/x509": "^1.9.5",
     "buffer": "^6.0.3",
-    "cbor-x": "^1.5.9",
+    "cbor-x": "^1.6.0",
     "compare-versions": "^6.0.0",
     "cose-kit": "^1.7.1",
     "debug": "^4.3.4",
