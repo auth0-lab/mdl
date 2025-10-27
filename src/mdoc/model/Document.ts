@@ -6,6 +6,7 @@ import { IssuerSignedItem } from '../IssuerSignedItem';
 import IssuerAuth from './IssuerAuth';
 import { DeviceKeyInfo, DigestAlgorithm, DocType, IssuerNameSpaces, MSO, SupportedAlgs, ValidityInfo } from './types';
 import { IssuerSignedDocument } from './IssuerSignedDocument';
+import { Signer } from '../signing/Signer';
 
 const DEFAULT_NS = 'org.iso.18013.5.1';
 
@@ -162,20 +163,30 @@ export class Document {
    * Generate the issuer signature for the document.
    *
    * @param {Object} params - The parameters object
-   * @param {jose.JWK | Uint8Array} params.issuerPrivateKey - The issuer's private key either in JWK format or COSE_KEY format as buffer.
+   * @param {jose.JWK | Uint8Array} [params.issuerPrivateKey] - The issuer's private key either in JWK format or COSE_KEY format as buffer. Required if signer is not provided.
+   * @param {Signer} [params.signer] - A Signer implementation for custom signing (e.g., AzureKeyVaultSigner). Required if issuerPrivateKey is not provided.
    * @param {string | Uint8Array | Array<string | Uint8Array>} params.issuerCertificate - The issuer's certificate in pem format, as a buffer, or an array.
    * @param {SupportedAlgs} params.alg - The algorhitm used for the MSO signature.
-   * @param {string | Uint8Array} [params.kid] - The key id of the issuer's private key. default: issuerPrivateKey.kid
+   * @param {string | Uint8Array} [params.kid] - The key id of the issuer's private key. default: issuerPrivateKey.kid or signer.getKeyId()
    * @returns {Promise<IssuerSignedDoc>} - The signed document
    */
   async sign(params: {
-    issuerPrivateKey: jose.JWK | Uint8Array,
+    issuerPrivateKey?: jose.JWK | Uint8Array,
+    signer?: Signer,
     issuerCertificate: string | Uint8Array | Array<string | Uint8Array>,
     alg: SupportedAlgs,
     kid?: string | Uint8Array,
   }): Promise<IssuerSignedDocument> {
     if (!this.#issuerNameSpaces) {
       throw new Error('No namespaces added');
+    }
+
+    // Validate that either issuerPrivateKey or signer is provided (but not both)
+    if (!params.issuerPrivateKey && !params.signer) {
+      throw new Error('Must provide either issuerPrivateKey or signer');
+    }
+    if (params.issuerPrivateKey && params.signer) {
+      throw new Error('Cannot provide both issuerPrivateKey and signer. Use one or the other.');
     }
 
     let issuerCertificateChain: Uint8Array[];
@@ -188,11 +199,16 @@ export class Document {
       issuerCertificateChain = [params.issuerCertificate];
     }
 
-    const issuerPrivateKeyJWK = params.issuerPrivateKey instanceof Uint8Array ?
-      COSEKeyToJWK(params.issuerPrivateKey) :
-      params.issuerPrivateKey;
+    // Prepare key material based on what was provided
+    let issuerPrivateKeyJWK: jose.JWK | undefined;
+    let issuerPrivateKey: jose.KeyLike | Uint8Array | undefined;
 
-    const issuerPrivateKey = await jose.importJWK(issuerPrivateKeyJWK);
+    if (params.issuerPrivateKey) {
+      issuerPrivateKeyJWK = params.issuerPrivateKey instanceof Uint8Array ?
+        COSEKeyToJWK(params.issuerPrivateKey) :
+        params.issuerPrivateKey;
+      issuerPrivateKey = await jose.importJWK(issuerPrivateKeyJWK);
+    }
 
     const valueDigests = new Map(await Promise.all(Object.entries(this.#issuerNameSpaces).map(async ([namespace, items]) => {
       const digestMap = new Map<number, Uint8Array>();
@@ -212,19 +228,38 @@ export class Document {
       validityInfo: this.#validityInfo,
     };
 
-    const payload = cborEncode(DataItem.fromData(mso));
+    const payload = new Uint8Array(cborEncode(DataItem.fromData(mso)));
     const protectedHeader: ProtectedHeaders = { alg: params.alg };
+
+    // Determine kid from params, issuerPrivateKeyJWK, or signer
+    const { kid: paramKid, signer } = params;
+    let kid: string | Uint8Array | undefined = paramKid;
+    if (!kid && issuerPrivateKeyJWK) {
+      kid = issuerPrivateKeyJWK.kid;
+    } else if (!kid && signer) {
+      kid = signer.getKeyId();
+    }
+
     const unprotectedHeader: UnprotectedHeaders = {
-      kid: params.kid ?? issuerPrivateKeyJWK.kid,
+      kid,
       x5chain: issuerCertificateChain.length === 1 ? issuerCertificateChain[0] : issuerCertificateChain,
     };
 
-    const issuerAuth = await IssuerAuth.sign(
-      protectedHeader,
-      unprotectedHeader,
-      payload,
-      issuerPrivateKey,
-    );
+    // Use either traditional signing or custom signer
+    const issuerAuth = signer ?
+      await IssuerAuth.signWithSigner(
+        protectedHeader,
+        unprotectedHeader,
+        payload,
+        signer,
+        params.alg,
+      ) :
+      await IssuerAuth.sign(
+        protectedHeader,
+        unprotectedHeader,
+        payload,
+        issuerPrivateKey!,
+      );
 
     const issuerSigned = {
       issuerAuth,
