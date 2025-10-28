@@ -66,6 +66,7 @@ describeIfAzureConfigured('Azure Key Vault Signer Example', () => {
     signer = new AzureKeyVaultSigner({
       keyVaultUrl: azureConfig.keyVaultUrl,
       keyName: azureConfig.keyName,
+      algorithm: 'ES256', // The test key is ES256
       credential,
     });
   });
@@ -88,7 +89,7 @@ describeIfAzureConfigured('Azure Key Vault Signer Example', () => {
 
     it('should sign data using Azure Key Vault', async () => {
       const testData = new Uint8Array([1, 2, 3, 4, 5]);
-      const signature = await signer.sign('ES256', testData);
+      const signature = await signer.sign(testData);
 
       expect(signature).toBeDefined();
       expect(signature).toBeInstanceOf(Uint8Array);
@@ -127,7 +128,7 @@ describeIfAzureConfigured('Azure Key Vault Signer Example', () => {
         .sign({
           signer, // Use Azure Key Vault signer
           issuerCertificate: ISSUER_CERTIFICATE,
-          alg: 'ES256',
+          // alg is inferred from signer.getAlgorithm()
         });
 
       const mdoc = new MDoc([document]);

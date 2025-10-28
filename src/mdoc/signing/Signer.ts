@@ -1,4 +1,5 @@
 import * as jose from 'jose';
+import { SupportedAlgs } from '../model/types';
 
 /**
  * Interface for signing operations that can be implemented by various
@@ -6,12 +7,12 @@ import * as jose from 'jose';
  */
 export interface Signer {
   /**
-   * Sign data using the configured signing mechanism
-   * @param algorithm - The COSE algorithm identifier (e.g., 'ES256', 'ES384', 'ES512')
+   * Sign data using the configured signing mechanism.
+   * The algorithm is determined by the signer based on its key type.
    * @param data - The data to sign
    * @returns The signature as a Uint8Array
    */
-  sign(algorithm: string, data: Uint8Array): Promise<Uint8Array>;
+  sign(data: Uint8Array): Promise<Uint8Array>;
 
   /**
    * Get the public key information for this signer in JWK format
@@ -24,4 +25,10 @@ export interface Signer {
    * @returns The key ID as a string, Uint8Array, or undefined
    */
   getKeyId(): string | Uint8Array | undefined;
+
+  /**
+   * Get the algorithm that this signer uses
+   * @returns The COSE algorithm identifier (e.g., 'ES256', 'ES384', 'ES512')
+   */
+  getAlgorithm(): SupportedAlgs;
 }

@@ -3,6 +3,7 @@ import { CryptographyClient, KeyClient, SignatureAlgorithm } from '@azure/keyvau
 import { TokenCredential, DefaultAzureCredential } from '@azure/identity';
 import { createHash } from 'crypto';
 import { Signer } from '../../../src/mdoc/signing/Signer';
+import { SupportedAlgs } from '../../../src/mdoc/model/types';
 
 export interface AzureKeyVaultSignerConfig {
   /**
@@ -14,6 +15,11 @@ export interface AzureKeyVaultSignerConfig {
    * The name of the key in Azure Key Vault
    */
   keyName: string;
+
+  /**
+   * The algorithm to use for signing (must match the key type in Azure Key Vault)
+   */
+  algorithm: SupportedAlgs;
 
   /**
    * Optional key version. If not specified, uses the latest version.
@@ -38,6 +44,7 @@ export class AzureKeyVaultSigner implements Signer {
   private keyVersion?: string;
   private credential: TokenCredential;
   private keyVaultUrl: string;
+  private algorithm: SupportedAlgs;
   private cachedPublicKey?: jose.JWK;
 
   constructor(config: AzureKeyVaultSignerConfig) {
@@ -45,6 +52,7 @@ export class AzureKeyVaultSigner implements Signer {
     this.keyVaultUrl = config.keyVaultUrl.replace(/\/$/, '');
     this.keyName = config.keyName;
     this.keyVersion = config.keyVersion;
+    this.algorithm = config.algorithm;
     this.credential = config.credential || new DefaultAzureCredential();
 
     this.keyClient = new KeyClient(this.keyVaultUrl, this.credential);
@@ -59,13 +67,13 @@ export class AzureKeyVaultSigner implements Signer {
     this.cryptoClient = new CryptographyClient(keyId, this.credential);
   }
 
-  async sign(algorithm: string, data: Uint8Array): Promise<Uint8Array> {
+  async sign(data: Uint8Array): Promise<Uint8Array> {
     // Azure Key Vault's sign operation expects a digest, not the raw data
     // So we need to hash the data first
-    const digest = this.hashData(algorithm, data);
+    const digest = this.hashData(this.algorithm, data);
 
     // Map COSE algorithm to Azure signature algorithm
-    const azureAlgorithm = this.mapCOSEtoAzureAlgorithm(algorithm);
+    const azureAlgorithm = this.mapCOSEtoAzureAlgorithm(this.algorithm);
 
     // Perform the signing operation in Azure Key Vault
     const signResult = await this.cryptoClient.sign(azureAlgorithm, digest);
@@ -94,6 +102,10 @@ export class AzureKeyVaultSigner implements Signer {
 
   getKeyId(): string {
     return this.keyName;
+  }
+
+  getAlgorithm(): SupportedAlgs {
+    return this.algorithm;
   }
 
   /**

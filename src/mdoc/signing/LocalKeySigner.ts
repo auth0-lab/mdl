@@ -1,6 +1,7 @@
 import * as jose from 'jose';
 import { createSign } from 'crypto';
 import { Signer } from './Signer';
+import { SupportedAlgs } from '../model/types';
 
 /**
  * Local key-based signer that uses JWK for signing operations.
@@ -8,17 +9,19 @@ import { Signer } from './Signer';
  */
 export class LocalKeySigner implements Signer {
   private jwk: jose.JWK;
+  private algorithm: SupportedAlgs;
 
-  constructor(jwk: jose.JWK) {
+  constructor(jwk: jose.JWK, algorithm: SupportedAlgs) {
     this.jwk = jwk;
+    this.algorithm = algorithm;
   }
 
-  async sign(algorithm: string, data: Uint8Array): Promise<Uint8Array> {
+  async sign(data: Uint8Array): Promise<Uint8Array> {
     // Import the JWK as a KeyLike object
     const key = await jose.importJWK(this.jwk);
 
     // Map COSE algorithm to Node.js digest algorithm
-    const digestAlgorithm = this.mapCOSEAlgorithmToNodeDigest(algorithm);
+    const digestAlgorithm = this.mapCOSEAlgorithmToNodeDigest(this.algorithm);
 
     // Use Node.js crypto to sign
     const signer = createSign(digestAlgorithm);
@@ -38,6 +41,10 @@ export class LocalKeySigner implements Signer {
 
   getKeyId(): string | Uint8Array | undefined {
     return this.jwk.kid;
+  }
+
+  getAlgorithm(): SupportedAlgs {
+    return this.algorithm;
   }
 
   /**

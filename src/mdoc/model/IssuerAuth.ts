@@ -172,7 +172,6 @@ export default class IssuerAuth extends Sign1 {
    * @param unprotectedHeaders - The unprotected headers
    * @param payload - The payload to sign
    * @param signer - The Signer implementation
-   * @param alg - The algorithm to use
    * @returns The signed IssuerAuth
    */
   static async signWithSigner(
@@ -180,8 +179,10 @@ export default class IssuerAuth extends Sign1 {
     unprotectedHeaders: UnprotectedHeaders | undefined,
     payload: Uint8Array,
     signer: Signer,
-    alg: SupportedAlgs,
   ): Promise<IssuerAuth> {
+    // Get the algorithm from the signer
+    const alg = signer.getAlgorithm();
+
     // Convert headers to Maps
     const protectedHeadersMap = protectedHeadersToMap(protectedHeaders);
 
@@ -211,7 +212,7 @@ export default class IssuerAuth extends Sign1 {
     ]);
 
     // Sign using the custom signer
-    const signature = await signer.sign(alg, new Uint8Array(toBeSigned));
+    const signature = await signer.sign(new Uint8Array(toBeSigned));
 
     return new IssuerAuth(
       new Uint8Array(encodedProtectedHeaders),

@@ -174,7 +174,7 @@ export class Document {
     issuerPrivateKey?: jose.JWK | Uint8Array,
     signer?: Signer,
     issuerCertificate: string | Uint8Array | Array<string | Uint8Array>,
-    alg: SupportedAlgs,
+    alg?: SupportedAlgs,
     kid?: string | Uint8Array,
   }): Promise<IssuerSignedDocument> {
     if (!this.#issuerNameSpaces) {
@@ -187,6 +187,25 @@ export class Document {
     }
     if (params.issuerPrivateKey && params.signer) {
       throw new Error('Cannot provide both issuerPrivateKey and signer. Use one or the other.');
+    }
+
+    // Determine the algorithm
+    let alg: SupportedAlgs;
+    if (params.signer) {
+      // When using signer, get algorithm from the signer
+      alg = params.signer.getAlgorithm();
+      // If alg was also provided, validate it matches
+      if (params.alg && params.alg !== alg) {
+        throw new Error(
+          `Algorithm mismatch: signer uses '${alg}' but 'alg' parameter specified '${params.alg}'`,
+        );
+      }
+    } else {
+      // When using issuerPrivateKey, alg is required
+      if (!params.alg) {
+        throw new Error('Must provide alg parameter when using issuerPrivateKey');
+      }
+      alg = params.alg;
     }
 
     let issuerCertificateChain: Uint8Array[];
@@ -229,7 +248,7 @@ export class Document {
     };
 
     const payload = new Uint8Array(cborEncode(DataItem.fromData(mso)));
-    const protectedHeader: ProtectedHeaders = { alg: params.alg };
+    const protectedHeader: ProtectedHeaders = { alg };
 
     // Determine kid from params, issuerPrivateKeyJWK, or signer
     const { kid: paramKid, signer } = params;
@@ -252,7 +271,6 @@ export class Document {
         unprotectedHeader,
         payload,
         signer,
-        params.alg,
       ) :
       await IssuerAuth.sign(
         protectedHeader,
