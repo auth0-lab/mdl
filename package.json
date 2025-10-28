@@ -64,8 +64,6 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "@azure/identity": "^4.0.0",
-    "@azure/keyvault-keys": "^4.8.0",
     "@noble/curves": "^1.2.0",
     "@panva/hkdf": "^1.1.1",
     "@peculiar/x509": "^1.9.5",

@@ -2,7 +2,7 @@ import * as jose from 'jose';
 import { CryptographyClient, KeyClient, SignatureAlgorithm } from '@azure/keyvault-keys';
 import { TokenCredential, DefaultAzureCredential } from '@azure/identity';
 import { createHash } from 'crypto';
-import { Signer } from './Signer';
+import { Signer } from '../../../src/mdoc/signing/Signer';
 
 export interface AzureKeyVaultSignerConfig {
   /**
