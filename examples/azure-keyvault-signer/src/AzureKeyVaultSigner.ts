@@ -1,5 +1,4 @@
-import * as jose from 'jose';
-import { CryptographyClient, KeyClient, SignatureAlgorithm } from '@azure/keyvault-keys';
+import { CryptographyClient, SignatureAlgorithm } from '@azure/keyvault-keys';
 import { TokenCredential, DefaultAzureCredential } from '@azure/identity';
 import { createHash } from 'crypto';
 import { Signer } from '../../../src/mdoc/signing/Signer';
@@ -39,32 +38,24 @@ export interface AzureKeyVaultSignerConfig {
  */
 export class AzureKeyVaultSigner implements Signer {
   private cryptoClient: CryptographyClient;
-  private keyClient: KeyClient;
   private keyName: string;
-  private keyVersion?: string;
-  private credential: TokenCredential;
-  private keyVaultUrl: string;
   private algorithm: SupportedAlgs;
-  private cachedPublicKey?: jose.JWK;
 
   constructor(config: AzureKeyVaultSignerConfig) {
     // Normalize the key vault URL by removing trailing slash
-    this.keyVaultUrl = config.keyVaultUrl.replace(/\/$/, '');
+    const keyVaultUrl = config.keyVaultUrl.replace(/\/$/, '');
     this.keyName = config.keyName;
-    this.keyVersion = config.keyVersion;
     this.algorithm = config.algorithm;
-    this.credential = config.credential || new DefaultAzureCredential();
-
-    this.keyClient = new KeyClient(this.keyVaultUrl, this.credential);
+    const credential = config.credential || new DefaultAzureCredential();
 
     // Initialize the cryptography client
     // If keyVersion is provided, use it; otherwise, use the key name which will use the
     // latest version
-    const keyId = this.keyVersion
-      ? `${this.keyVaultUrl}/keys/${this.keyName}/${this.keyVersion}`
-      : `${this.keyVaultUrl}/keys/${this.keyName}`;
+    const keyId = config.keyVersion
+      ? `${keyVaultUrl}/keys/${this.keyName}/${config.keyVersion}`
+      : `${keyVaultUrl}/keys/${this.keyName}`;
 
-    this.cryptoClient = new CryptographyClient(keyId, this.credential);
+    this.cryptoClient = new CryptographyClient(keyId, credential);
   }
 
   async sign(data: Uint8Array): Promise<Uint8Array> {
@@ -79,25 +70,6 @@ export class AzureKeyVaultSigner implements Signer {
     const signResult = await this.cryptoClient.sign(azureAlgorithm, digest);
 
     return new Uint8Array(signResult.result);
-  }
-
-  async getPublicKey(): Promise<jose.JWK> {
-    if (this.cachedPublicKey) {
-      return this.cachedPublicKey;
-    }
-
-    // Retrieve the key from Azure Key Vault
-    const keyVaultKey = await this.keyClient.getKey(this.keyName, { version: this.keyVersion });
-
-    if (!keyVaultKey.key) {
-      throw new Error(`Failed to retrieve key ${this.keyName} from Azure Key Vault`);
-    }
-
-    // Convert Azure Key Vault key to JWK format
-    const jwk = this.azureKeyToJWK(keyVaultKey.key);
-
-    this.cachedPublicKey = jwk;
-    return jwk;
   }
 
   getKeyId(): string {
@@ -191,32 +163,5 @@ export class AzureKeyVaultSigner implements Signer {
     }
 
     return azureAlg;
-  }
-
-  /**
-   * Convert Azure Key Vault key to JWK format
-   * @param azureKey - Key from Azure Key Vault
-   * @returns JWK representation of the public key
-   */
-  private azureKeyToJWK(azureKey: any): jose.JWK {
-    // Azure Key Vault returns keys in JWK format already
-    // We just need to extract the public key components
-    const jwk: jose.JWK = {
-      kty: azureKey.kty.replace('-HSM', ''), // Normalize EC-HSM to EC, RSA-HSM to RSA
-      kid: azureKey.kid,
-    };
-
-    if (azureKey.kty === 'EC' || azureKey.kty === 'EC-HSM') {
-      jwk.crv = azureKey.crv;
-      jwk.x = azureKey.x;
-      jwk.y = azureKey.y;
-    } else if (azureKey.kty === 'RSA' || azureKey.kty === 'RSA-HSM') {
-      jwk.n = azureKey.n;
-      jwk.e = azureKey.e;
-    } else {
-      throw new Error(`Unsupported key type: ${azureKey.kty}`);
-    }
-
-    return jwk;
   }
 }

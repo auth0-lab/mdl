@@ -33,12 +33,6 @@ export class LocalKeySigner implements Signer {
     return new Uint8Array(signature);
   }
 
-  async getPublicKey(): Promise<jose.JWK> {
-    // Remove the private key component to get the public key
-    const { d, ...publicKey } = this.jwk;
-    return publicKey;
-  }
-
   getKeyId(): string | Uint8Array | undefined {
     return this.jwk.kid;
   }

@@ -1,4 +1,3 @@
-import * as jose from 'jose';
 import { SupportedAlgs } from '../model/types';
 
 /**
@@ -13,12 +12,6 @@ export interface Signer {
    * @returns The signature as a Uint8Array
    */
   sign(data: Uint8Array): Promise<Uint8Array>;
-
-  /**
-   * Get the public key information for this signer in JWK format
-   * @returns The public key as a JWK
-   */
-  getPublicKey(): Promise<jose.JWK>;
 
   /**
    * Get the key ID for this signer

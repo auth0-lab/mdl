@@ -75,17 +75,8 @@ describeIfAzureConfigured('Azure Key Vault Signer Example', () => {
     it('should initialize successfully', () => {
       expect(signer).toBeDefined();
       expect(signer.getKeyId()).toBe(azureConfig!.keyName);
+      expect(signer.getAlgorithm()).toBe('ES256');
     });
-
-    it('should retrieve the public key from Azure Key Vault', async () => {
-      const publicKey = await signer.getPublicKey();
-      expect(publicKey).toBeDefined();
-      expect(publicKey.kty).toBe('EC');
-      expect(publicKey.crv).toBe('P-256'); // ES256 uses P-256
-      expect(publicKey.x).toBeDefined();
-      expect(publicKey.y).toBeDefined();
-      expect(publicKey.d).toBeUndefined(); // Should not have private key component
-    }, 10000); // 10 second timeout for network call
 
     it('should sign data using Azure Key Vault', async () => {
       const testData = new Uint8Array([1, 2, 3, 4, 5]);
