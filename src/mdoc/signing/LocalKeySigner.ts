@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { createSign } from 'crypto';
+import { sign as cryptoSign } from 'crypto';
 import { Signer } from './Signer';
 import { SupportedAlgs } from '../model/types';
 
@@ -17,19 +17,22 @@ export class LocalKeySigner implements Signer {
   }
 
   async sign(data: Uint8Array): Promise<Uint8Array> {
-    // Import the JWK as a KeyLike object
+    // Import the JWK as a KeyObject
     const key = await jose.importJWK(this.jwk);
 
     // Map COSE algorithm to Node.js digest algorithm
-    const digestAlgorithm = this.mapCOSEAlgorithmToNodeDigest(this.algorithm);
+    const digestAlgorithm = this.mapCOSEAlgorithmToDigest(this.algorithm);
 
-    // Use Node.js crypto to sign
-    const signer = createSign(digestAlgorithm);
-    signer.update(data);
-    signer.end();
-
-    // KeyLike from jose.importJWK is compatible with Node.js crypto
-    const signature = signer.sign(key as any);
+    // Use Node.js crypto.sign() one-shot API
+    // This API will hash the data once with the specified digest algorithm
+    // and then sign the hash, which is what COSE expects
+    //
+    // IMPORTANT: COSE uses IEEE P1363 format (raw R||S concatenation) for ECDSA signatures,
+    // not DER encoding. We must specify dsaEncoding: 'ieee-p1363' for EC algorithms.
+    const signature = cryptoSign(digestAlgorithm, data, {
+      key: key as any,
+      dsaEncoding: 'ieee-p1363',
+    });
     return new Uint8Array(signature);
   }
 
@@ -46,17 +49,17 @@ export class LocalKeySigner implements Signer {
    * @param coseAlg - COSE algorithm identifier (e.g., 'ES256', 'ES384', 'ES512')
    * @returns Node.js digest algorithm name
    */
-  private mapCOSEAlgorithmToNodeDigest(coseAlg: string): string {
+  private mapCOSEAlgorithmToDigest(coseAlg: string): string {
     const algorithmMap: Record<string, string> = {
       ES256: 'sha256',
       ES384: 'sha384',
       ES512: 'sha512',
-      RS256: 'RSA-SHA256',
-      RS384: 'RSA-SHA384',
-      RS512: 'RSA-SHA512',
-      PS256: 'RSA-SHA256',
-      PS384: 'RSA-SHA384',
-      PS512: 'RSA-SHA512',
+      RS256: 'sha256',
+      RS384: 'sha384',
+      RS512: 'sha512',
+      PS256: 'sha256',
+      PS384: 'sha384',
+      PS512: 'sha512',
     };
 
     const nodeAlg = algorithmMap[coseAlg];
