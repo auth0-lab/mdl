@@ -24,12 +24,13 @@ Document.sign()
 
 1. **Signer Interface** (`src/mdoc/signing/Signer.ts`)
    - Abstract interface for signing operations
-   - Supports `sign()`, `getPublicKey()`, and `getKeyId()` methods
+   - Supports `sign()`, `getKeyId()`, and `getAlgorithm()` methods
 
-2. **AzureKeyVaultSigner** (`src/mdoc/signing/AzureKeyVaultSigner.ts`)
-   - Implements Signer interface using Azure Key Vault
+2. **AzureKeyVaultSigner** (`examples/azure-keyvault-signer/src/AzureKeyVaultSigner.ts`)
+   - Example implementation of Signer interface using Azure Key Vault
    - Uses `@azure/keyvault-keys` and `@azure/identity` SDKs
    - Automatically hashes data and maps COSE algorithms to Azure signature algorithms
+   - Note: This is an example implementation, not part of the core library
 
 3. **LocalKeySigner** (`src/mdoc/signing/LocalKeySigner.ts`)
    - Implements Signer interface for local JWK keys
@@ -47,13 +48,17 @@ Document.sign()
 
 ## Changes Made
 
-### New Files
+### New Files in Core Library
 
 - `src/mdoc/signing/Signer.ts` - Signer interface
 - `src/mdoc/signing/LocalKeySigner.ts` - Local key implementation
-- `src/mdoc/signing/AzureKeyVaultSigner.ts` - Azure Key Vault implementation
 - `src/mdoc/signing/index.ts` - Module exports
-- `AZURE_KEY_VAULT_EXAMPLE.md` - Usage examples and documentation
+
+### Example Implementation
+
+- `examples/azure-keyvault-signer/src/AzureKeyVaultSigner.ts` - Azure Key Vault example implementation
+- `examples/azure-keyvault-signer/AZURE_KEY_VAULT_EXAMPLE.md` - Usage examples and documentation
+- `examples/azure-keyvault-signer/AZURE_KEY_VAULT_INTEGRATION.md` - Integration guide (this document)
 
 ### Modified Files
 
@@ -67,22 +72,27 @@ Document.sign()
   - Integrated custom signer path
 
 - `src/index.ts`
-  - Exported new signing classes and interfaces
+  - Exported `Signer` interface and `LocalKeySigner` class
+  - Note: `AzureKeyVaultSigner` is not exported from the main library; it's an example implementation
 
-- `package.json`
-  - Added `@azure/identity` (^4.0.0)
-  - Added `@azure/keyvault-keys` (^4.8.0)
+- `examples/azure-keyvault-signer/package.json`
+  - Lists `@azure/identity` (^4.0.0) as peer dependency
+  - Lists `@azure/keyvault-keys` (^4.8.0) as peer dependency
+  - Note: These Azure packages are NOT dependencies of the core `@auth0/mdl` library
+  - Users must install these packages separately if using the Azure Key Vault example
 
 ## Usage
 
 ### Quick Start
 
 ```typescript
-import { Document, AzureKeyVaultSigner } from '@auth0/mdl';
+import { Document } from '@auth0/mdl';
+import { AzureKeyVaultSigner } from './examples/azure-keyvault-signer/src/AzureKeyVaultSigner';
 
 const signer = new AzureKeyVaultSigner({
   keyVaultUrl: 'https://my-vault.vault.azure.net',
   keyName: 'my-signing-key',
+  algorithm: 'ES256', // Required: must match your key type
 });
 
 const doc = new Document('org.iso.18013.5.1.mDL');
@@ -91,7 +101,6 @@ const doc = new Document('org.iso.18013.5.1.mDL');
 const signedDoc = await doc.sign({
   signer,
   issuerCertificate: certificatePEM,
-  alg: 'ES256',
 });
 ```
 
