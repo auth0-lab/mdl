@@ -8,14 +8,6 @@ MDoc {
       "docType": "org.iso.18013.5.1.mDL",
       "issuerSigned": {
         "issuerAuth": IssuerAuth {
-          "encodedProtectedHeaders": {
-            "data": [
-              161,
-              1,
-              38,
-            ],
-            "type": "Buffer",
-          },
           "payload": {
             "data": [
               216,
@@ -883,6 +875,9 @@ MDoc {
               90,
             ],
             "type": "Buffer",
+          },
+          "protectedHeaders": Map {
+            1 => -7,
           },
           "signature": {
             "data": [

@@ -5,7 +5,7 @@ import { p521 } from '@noble/curves/p521';
 import * as webcrypto from 'uncrypto';
 import { Buffer } from 'buffer';
 import hkdf from '@panva/hkdf';
-import { COSEKeyToJWK } from 'cose-kit';
+import { COSEKey } from 'cose-kit';
 
 import { cborEncode, cborDecode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
@@ -49,7 +49,7 @@ export const calculateEphemeralMacKey = async (
   publicKey: Uint8Array | Map<number, Uint8Array | number>,
   sessionTranscriptBytes: Uint8Array,
 ): Promise<Uint8Array> => {
-  const { kty, crv } = COSEKeyToJWK(privateKey);
+  const { kty, crv } = COSEKey.import(privateKey).toJWK();
   const privkey = COSEKeyToRAW(privateKey); // only d
   const pubkey = COSEKeyToRAW(publicKey); // 0x04 || x || y
   let ikm;

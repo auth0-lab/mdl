@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { COSEKeyFromJWK, COSEKeyToJWK, ProtectedHeaders, UnprotectedHeaders } from 'cose-kit';
+import { COSEKey, ProtectedHeaders, UnprotectedHeaders, Headers, Algorithms } from 'cose-kit';
 import { fromPEM } from '../utils';
 import { DataItem, DateOnly, cborDecode, cborEncode } from '../../cbor';
 import { IssuerSignedItem } from '../IssuerSignedItem';
@@ -108,7 +108,7 @@ export class Document {
     const deviceKeyCOSEKey =
       deviceKey instanceof Uint8Array ?
         deviceKey :
-        COSEKeyFromJWK(deviceKey);
+        COSEKey.fromJWK(deviceKey).encode();
     const decodedCoseKey = cborDecode(deviceKeyCOSEKey);
 
     this.#deviceKeyInfo = {
@@ -189,7 +189,7 @@ export class Document {
     }
 
     const issuerPrivateKeyJWK = params.issuerPrivateKey instanceof Uint8Array ?
-      COSEKeyToJWK(params.issuerPrivateKey) :
+      COSEKey.import(params.issuerPrivateKey).toJWK() :
       params.issuerPrivateKey;
 
     const issuerPrivateKey = await jose.importJWK(issuerPrivateKeyJWK);
@@ -213,16 +213,19 @@ export class Document {
     };
 
     const payload = cborEncode(DataItem.fromData(mso));
-    const protectedHeader: ProtectedHeaders = { alg: params.alg };
-    const unprotectedHeader: UnprotectedHeaders = {
-      kid: params.kid ?? issuerPrivateKeyJWK.kid,
-      x5chain: issuerCertificateChain.length === 1 ? issuerCertificateChain[0] : issuerCertificateChain,
-    };
+    const protectedHeader: ProtectedHeaders = new ProtectedHeaders();
+    protectedHeader.set(Headers.Algorithm, Algorithms[params.alg]);
+
+    const unprotectedHeader: UnprotectedHeaders = new UnprotectedHeaders()
+    if (params.kid) {
+      unprotectedHeader.set(Headers.KeyID, typeof params.kid === 'string' ? new TextEncoder().encode(params.kid) : params.kid);
+    }
+    unprotectedHeader.set(Headers.X5Chain, issuerCertificateChain.length === 1 ? issuerCertificateChain[0] : issuerCertificateChain);
 
     const issuerAuth = await IssuerAuth.sign(
       protectedHeader,
       unprotectedHeader,
-      payload,
+      Uint8Array.from(payload),
       issuerPrivateKey,
     );
 

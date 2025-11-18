@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { COSEKeyToJWK } from 'cose-kit';
+import { COSEKey } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -101,7 +101,7 @@ describe('issuing an MDOC', () => {
     const { deviceKeyInfo } = parsedDocument.issuerSigned.issuerAuth.decodedPayload;
     expect(deviceKeyInfo?.deviceKey).toBeDefined();
     const actual = typeof deviceKeyInfo !== 'undefined' &&
-      COSEKeyToJWK(deviceKeyInfo.deviceKey);
+      COSEKey.import(deviceKeyInfo.deviceKey).toJWK();
     expect(actual).toEqual(publicKeyJWK);
   });
 

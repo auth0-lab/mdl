@@ -1,6 +1,6 @@
 import { randomFillSync } from 'node:crypto';
 import * as jose from 'jose';
-import { COSEKeyFromJWK } from 'cose-kit';
+import { COSEKey } from 'cose-kit';
 import {
   MDoc,
   Document,
@@ -95,8 +95,8 @@ curves.forEach((c) => {
         const readerKeypair = await jose.generateKeyPair(c.alg, c.opts);
         const readerKey = await jose.exportJWK(readerKeypair.privateKey);
         const { d: _1, ...pubKey } = readerKey;
-        readerPrivateKey = COSEKeyFromJWK(readerKey);
-        readerPublicKey = COSEKeyFromJWK(pubKey);
+        readerPrivateKey = COSEKey.fromJWK(readerKey).encode();
+        readerPublicKey = COSEKey.fromJWK(pubKey).encode();
       }
     });
 
@@ -152,7 +152,7 @@ curves.forEach((c) => {
               });
               throw new Error('should not validate with different transcripts');
             } catch (error) {
-              expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+              expect(error.message).toMatch('Unable to verify deviceAuth MAC: signature verification failed');
             }
           });
         });
@@ -236,7 +236,7 @@ curves.forEach((c) => {
               });
               throw new Error('should not validate with different transcripts');
             } catch (error) {
-              expect(error.message).toMatch('Unable to verify deviceAuth MAC: Device MAC must be valid');
+              expect(error.message).toMatch('Unable to verify deviceAuth MAC: signature verification failed');
             }
           });
         });

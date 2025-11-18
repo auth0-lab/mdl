@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
+import { Mac0, Sign1, COSEKey, Headers, Algorithms, ProtectedHeaders, UnprotectedHeaders, MacAlgorithms } from 'cose-kit';
 import { Buffer } from 'buffer';
 import { InputDescriptor, PresentationDefinition } from './PresentationDefinition';
 import { MDoc } from './MDoc';
@@ -10,7 +10,6 @@ import { IssuerSignedItem } from '../IssuerSignedItem';
 import { parse } from '../parser';
 import { calculateDeviceAutenticationBytes, calculateEphemeralMacKey } from '../utils';
 import { DataItem, cborEncode } from '../../cbor';
-import COSEKeyToRAW from '../../cose/coseKey';
 
 /**
  * A builder class for creating a device response.
@@ -151,8 +150,8 @@ export class DeviceResponse {
     this.usingSessionTranscriptBytes(
       cborEncode(
         DataItem.fromData([
-          new DataItem({ buffer: deviceEngagementBytes }),
-          new DataItem({ buffer: eReaderKeyBytes }),
+          new DataItem({ buffer: Uint8Array.from(deviceEngagementBytes) }),
+          new DataItem({ buffer: Uint8Array.from(eReaderKeyBytes) }),
           readerEngagementBytes,
         ]),
       ),
@@ -186,7 +185,7 @@ export class DeviceResponse {
     if (devicePrivateKey instanceof Uint8Array) {
       this.devicePrivateKey = devicePrivateKey;
     } else {
-      this.devicePrivateKey = COSEKeyFromJWK(devicePrivateKey);
+      this.devicePrivateKey = COSEKey.fromJWK(devicePrivateKey).encode();
     }
     this.alg = alg;
     this.useMac = false;
@@ -209,7 +208,7 @@ export class DeviceResponse {
     if (devicePrivateKey instanceof Uint8Array) {
       this.devicePrivateKey = devicePrivateKey;
     } else {
-      this.devicePrivateKey = COSEKeyFromJWK(devicePrivateKey);
+      this.devicePrivateKey = COSEKey.fromJWK(devicePrivateKey).encode();
     }
     this.ephemeralPublicKey = ephemeralPublicKey;
     this.macAlg = alg;
@@ -270,7 +269,7 @@ export class DeviceResponse {
     deviceAuthenticationBytes: Uint8Array,
     sessionTranscriptBytes: any,
   ): Promise<DeviceAuth> {
-    const { kid } = COSEKeyToJWK(this.devicePrivateKey);
+    const { kid } = COSEKey.import(this.devicePrivateKey).toJWK();
 
     const ephemeralMacKey = await calculateEphemeralMacKey(
       this.devicePrivateKey,
@@ -279,8 +278,8 @@ export class DeviceResponse {
     );
 
     const mac = await Mac0.create(
-      { alg: this.macAlg },
-      { kid },
+      [[Headers.Algorithm, MacAlgorithms[this.macAlg]]],
+      [[Headers.KeyID, typeof kid === 'string' ? new TextEncoder().encode(kid) : kid]],
       deviceAuthenticationBytes,
       ephemeralMacKey,
     );
@@ -290,13 +289,18 @@ export class DeviceResponse {
 
   private async getDeviceAuthSign(cborData: Uint8Array): Promise<DeviceAuth> {
     if (!this.devicePrivateKey) throw new Error('Missing devicePrivateKey');
-    const key = await importCOSEKey(this.devicePrivateKey);
-    const { kid } = COSEKeyToJWK(this.devicePrivateKey);
-
+    const coseKey = await COSEKey.import(this.devicePrivateKey);
+    const key = await coseKey.toKeyLike();
+    const { kid } = coseKey.toJWK();
+    
+    const protectedHeaders = new ProtectedHeaders();
+    protectedHeaders.set(Headers.Algorithm, Algorithms[this.alg]);
+    const unprotectedHeaders = new UnprotectedHeaders();
+    unprotectedHeaders.set(Headers.KeyID, typeof kid === 'string' ? new TextEncoder().encode(kid) : kid);
     const deviceSignature = await Sign1.sign(
-      { alg: this.alg },
-      { kid },
-      Buffer.from(cborData),
+      protectedHeaders,
+      unprotectedHeaders,
+      Uint8Array.from(cborData),
       key,
     );
     return { deviceSignature };

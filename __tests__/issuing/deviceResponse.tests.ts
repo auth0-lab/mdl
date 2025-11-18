@@ -126,7 +126,7 @@ describe('issuing a device response', () => {
             });
             throw new Error('should not validate with different transcripts');
           } catch (error) {
-            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');
+            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): signature verification failed');
           }
         });
       });
@@ -211,7 +211,7 @@ describe('issuing a device response', () => {
             });
             throw new Error('should not validate with different transcripts');
           } catch (error) {
-            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): Device signature must be valid');
+            expect(error.message).toMatch('Unable to verify deviceAuth signature (ECDSA/EdDSA): signature verification failed');
           }
         });
       });
