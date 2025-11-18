@@ -2,7 +2,7 @@ import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
 import { importX509, JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
-import { COSEKeyToJWK, Sign1, importCOSEKey } from 'cose-kit';
+import { COSEKey, Sign1 } from 'cose-kit';
 import crypto from 'uncrypto';
 import { MDoc } from './model/MDoc';
 
@@ -66,13 +66,23 @@ export class Verifier {
       }
     }
 
-    const verificationResult = verificationKey && await issuerAuth.verify(verificationKey);
-    onCheck({
-      status: verificationResult ? 'PASSED' : 'FAILED',
-      check: 'Issuer signature must be valid',
-      id: VerificationAssessmentId.ISSUER_AUTH.IssuerSignatureValidity,
-    });
-
+    if (verificationKey) {
+      await issuerAuth.verify(verificationKey).then(() => {
+       onCheck({
+          status: 'PASSED',
+          check: 'Issuer signature must be valid',
+          id: VerificationAssessmentId.ISSUER_AUTH.IssuerSignatureValidity,
+        });
+      }, (error) => {
+        onCheck({
+          status: 'FAILED',
+          check: 'Issuer signature must be valid',
+          id: VerificationAssessmentId.ISSUER_AUTH.IssuerSignatureValidity,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
+    
     // Validity
     const { validityInfo } = issuerAuth.decodedPayload;
     const now = new Date();
@@ -157,13 +167,13 @@ export class Verifier {
     }
 
     if (deviceAuth.deviceSignature) {
-      const deviceKey = await importCOSEKey(deviceKeyCoseKey);
+      const deviceKey = await COSEKey.import(deviceKeyCoseKey).toKeyLike();
 
       // ECDSA/EdDSA authentication
       try {
         const ds = deviceAuth.deviceSignature;
 
-        const verificationResult = await new Sign1(
+        await new Sign1(
           ds.protectedHeaders,
           ds.unprotectedHeaders,
           deviceAuthenticationBytes,
@@ -171,7 +181,7 @@ export class Verifier {
         ).verify(deviceKey);
 
         onCheck({
-          status: verificationResult ? 'PASSED' : 'FAILED',
+          status: 'PASSED',
           check: 'Device signature must be valid',
           id: VerificationAssessmentId.DEVICE_AUTH.DeviceSignatureValidity,
         });
@@ -215,14 +225,12 @@ export class Verifier {
         options.sessionTranscriptBytes,
       );
 
-      const isValid = await deviceAuth.deviceMac.verify(
+      await deviceAuth.deviceMac.verify(
         ephemeralMacKey,
-        undefined,
-        deviceAuthenticationBytes,
+        {detachedPayload: deviceAuthenticationBytes},
       );
-
       onCheck({
-        status: isValid ? 'PASSED' : 'FAILED',
+        status: 'PASSED',
         check: 'Device MAC must be valid',
         id: VerificationAssessmentId.DEVICE_AUTH.DeviceMacValidity,
       });
@@ -396,9 +404,8 @@ export class Verifier {
 
     const document = decoded.documents[0];
     const { issuerAuth } = document.issuerSigned;
-    const issuerCert = issuerAuth.x5chain &&
-      issuerAuth.x5chain.length > 0 &&
-      new X509Certificate(issuerAuth.x5chain[0]);
+    const issuerCertBytes = issuerAuth.x5chain?.[0]
+    const issuerCert = issuerCertBytes && new X509Certificate(Uint8Array.from(issuerCertBytes));
 
     const attributes = (await Promise.all(Object.keys(document.issuerSigned.nameSpaces).map(async (ns) => {
       const items = document.issuerSigned.nameSpaces[ns];
@@ -430,7 +437,7 @@ export class Verifier {
     if (document?.issuerSigned.issuerAuth) {
       const { deviceKeyInfo } = document.issuerSigned.issuerAuth.decodedPayload;
       if (deviceKeyInfo?.deviceKey) {
-        deviceKey = COSEKeyToJWK(deviceKeyInfo.deviceKey);
+        deviceKey = COSEKey.import(deviceKeyInfo.deviceKey).toJWK();
       }
     }
     const disclosedAttributes = attributes.filter((attr) => attr.isValid).length;
