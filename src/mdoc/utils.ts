@@ -10,6 +10,7 @@ import { COSEKeyToJWK } from 'cose-kit';
 import { cborEncode, cborDecode } from '../cbor';
 import { DataItem } from '../cbor/DataItem';
 import COSEKeyToRAW from '../cose/coseKey';
+import { SupportedAlgs } from './model/types';
 
 const { subtle } = webcrypto;
 
@@ -124,3 +125,42 @@ export function fromPEM(pem: string): Uint8Array {
   const base64 = pem.replace(/-{5}(BEGIN|END) .*-{5}/gm, '').replace(/\s/gm, '');
   return Buffer.from(base64, 'base64');
 }
+
+/**
+ * Maps elliptic curve identifiers to signature algorithms according to ISO/IEC 18013-5.
+ * 
+ * - ES256 (ECDSA with SHA-256): P-256, brainpoolP256r1
+ * - ES384 (ECDSA with SHA-384): P-384, brainpoolP320r1, brainpoolP384r1
+ * - ES512 (ECDSA with SHA-512): P-521, brainpoolP512r1
+ * - EdDSA: Ed25519, Ed448
+ */
+const CURVE_TO_ALG: Record<string, SupportedAlgs> = {
+  'P-256': 'ES256',
+  'brainpoolP256r1': 'ES256',
+  'P-384': 'ES384',
+  'brainpoolP320r1': 'ES384',
+  'brainpoolP384r1': 'ES384',
+  'P-521': 'ES512',
+  'brainpoolP512r1': 'ES512',
+  'Ed25519': 'EdDSA',
+  'Ed448': 'EdDSA',
+} as const;
+
+/**
+ * Determines the signature algorithm based on the JWK curve parameter.
+ * 
+ * @param crv - The curve identifier from the JWK
+ * @returns The corresponding signature algorithm
+ * @throws Error if the curve is not supported
+ */
+export function getAlgFromCurve(crv: string | undefined): SupportedAlgs {
+  if (!crv) {
+    throw new Error('Missing curve (crv) parameter in device key');
+  }
+  const alg = CURVE_TO_ALG[crv as keyof typeof CURVE_TO_ALG];
+  if (!alg) {
+    throw new Error(`Unsupported curve: ${crv}`);
+  }
+  return alg;
+}
+

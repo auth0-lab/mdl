@@ -9,10 +9,12 @@ import { MDoc } from './model/MDoc';
 import {
   calculateEphemeralMacKey,
   calculateDeviceAutenticationBytes,
+  getAlgFromCurve,
 } from './utils';
 
 import {
   DiagnosticInformation,
+  SupportedAlgs,
 } from './model/types';
 import { UserDefinedVerificationCallback, VerificationAssessment, buildCallback, onCatCheck } from './checkCallback';
 
@@ -28,6 +30,7 @@ const DIGEST_ALGS = {
   'SHA-384': 'sha384',
   'SHA-512': 'sha512',
 } as { [key: string]: string };
+
 
 export class Verifier {
   /**
@@ -148,10 +151,27 @@ export class Verifier {
 
     if (deviceAuth.deviceSignature) {
       const deviceKeyJwk = COSEKeyToJWK(deviceKeyCoseKey);
-      const deviceKey = await importJWK(deviceKeyJwk, deviceKeyJwk.alg ?? deviceAuth.deviceSignature.algName);
+      
+      // Determine algorithm from curve according to ISO/IEC 18013-5
+      let alg: SupportedAlgs;
+      try {
+        alg = getAlgFromCurve(deviceKeyJwk.crv);
+        onCheck({
+          status: 'PASSED',
+          check: `Device key curve '${deviceKeyJwk.crv}' is supported`,
+        });
+      } catch (err) {
+        onCheck({
+          status: 'FAILED',
+          check: 'Device key must use a supported curve',
+          reason: err.message,
+        });
+        return;
+      }
 
       // ECDSA/EdDSA authentication
       try {
+        const deviceKey = await importJWK(deviceKeyJwk, alg);
         const ds = deviceAuth.deviceSignature;
 
         const verificationResult = await new Sign1(
