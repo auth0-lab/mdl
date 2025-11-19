@@ -1,8 +1,8 @@
 import { compareVersions } from 'compare-versions';
 import { X509Certificate } from '@peculiar/x509';
-import { importX509, JWK, KeyLike } from 'jose';
+import { importJWK, importX509, JWK, KeyLike } from 'jose';
 import { Buffer } from 'buffer';
-import { COSEKeyToJWK, Sign1, importCOSEKey } from 'cose-kit';
+import { COSEKeyToJWK, Sign1 } from 'cose-kit';
 import crypto from 'uncrypto';
 import { MDoc } from './model/MDoc';
 
@@ -157,7 +157,9 @@ export class Verifier {
     }
 
     if (deviceAuth.deviceSignature) {
-      const deviceKey = await importCOSEKey(deviceKeyCoseKey);
+      const deviceKeyJwk = COSEKeyToJWK(deviceKeyCoseKey);
+      // When deviceKey (COSE Key) does not contain the `alg` parameter, use the one specified by the COSE_Sign1
+      const deviceKey = await importJWK(deviceKeyJwk, deviceKeyJwk.alg ?? deviceAuth.deviceSignature.algName);
 
       // ECDSA/EdDSA authentication
       try {
