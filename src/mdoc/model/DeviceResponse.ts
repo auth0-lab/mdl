@@ -2,6 +2,7 @@ import * as jose from 'jose';
 import { COSEKeyFromJWK, COSEKeyToJWK, Mac0, Sign1, importCOSEKey } from 'cose-kit';
 import { Buffer } from 'buffer';
 import { InputDescriptor, PresentationDefinition } from './PresentationDefinition';
+import { DcqlQuery, DcqlQueryCredential} from './DcqlQuery';
 import { MDoc } from './MDoc';
 import { DeviceAuth, DeviceSigned, MacSupportedAlgs, SupportedAlgs } from './types';
 import { IssuerSignedDocument } from './IssuerSignedDocument';
@@ -17,7 +18,8 @@ import COSEKeyToRAW from '../../cose/coseKey';
  */
 export class DeviceResponse {
   private mdoc: MDoc;
-  private pd: PresentationDefinition;
+  private pd?: PresentationDefinition;
+  private dcqlQuery?: DcqlQuery;
   private sessionTranscriptBytes: Buffer;
   private useMac = true;
   private devicePrivateKey: Uint8Array;
@@ -61,6 +63,25 @@ export class DeviceResponse {
     }
 
     this.pd = pd;
+    return this;
+  }
+
+  /**
+   *
+   * @param dcqlQuery - The DCQL query to use for the device response.
+   * @returns {DeviceResponse}
+   */
+  public usingDcqlQuery(dcqlQuery: DcqlQuery): DeviceResponse {
+    if (!dcqlQuery.credentials.length) {
+      throw new Error('The DCQL query must have at least one credential.');
+    }
+
+    const hasDuplicates = dcqlQuery.credentials.some((id1, idx) => dcqlQuery.credentials.findIndex((id2) => id2.id === id1.id) !== idx);
+    if (hasDuplicates) {
+      throw new Error('Each credential must have a unique id property.');
+    }
+
+    this.dcqlQuery = dcqlQuery;
     return this;
   }
 
@@ -223,11 +244,37 @@ export class DeviceResponse {
    * @returns {Promise<MDoc>} - The device response as an MDoc.
    */
   public async sign(): Promise<MDoc> {
-    if (!this.pd) throw new Error('Must provide a presentation definition with .usingPresentationDefinition()');
+    if (!this.pd && !this.dcqlQuery) throw new Error('Must provide a presentation definition with .usingPresentationDefinition() or a DCQL query with .usingDcqlQuery()');
     if (!this.sessionTranscriptBytes) throw new Error('Must provide the session transcript with either .usingSessionTranscriptForOID4VP, .usingSessionTranscriptForWebAPI or .usingSessionTranscriptBytes');
 
-    const docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
+    let docs;
+    if (this.dcqlQuery) {
+      docs = await Promise.all(this.dcqlQuery.credentials.map((cred) => this.handleDcqlCredential(cred)));
+    } else if (this.pd) {
+      docs = await Promise.all(this.pd.input_descriptors.map((id) => this.handleInputDescriptor(id)));
+    } else {
+      throw new Error('No query or presentation definition provided');
+    }
     return new MDoc(docs);
+  }
+
+  private async handleDcqlCredential(cred: DcqlQueryCredential): Promise<DeviceSignedDocument> {
+    const document = (this.mdoc.documents || []).find((d) => d.docType === cred.meta.doctype_value);
+    if (!document) {
+      // TODO; probl need to create a DocumentError here, but let's just throw for now
+      throw new Error(`The mdoc does not have a document with DocType "${cred.id}"`);
+    }
+
+    const nameSpaces = await this.prepareNamespaces(cred, document);
+
+    return new DeviceSignedDocument(
+      document.docType,
+      {
+        nameSpaces,
+        issuerAuth: document.issuerSigned.issuerAuth,
+      },
+      await this.getDeviceSigned(document.docType),
+    );
   }
 
   private async handleInputDescriptor(id: InputDescriptor): Promise<DeviceSignedDocument> {
@@ -302,8 +349,15 @@ export class DeviceResponse {
     return { deviceSignature };
   }
 
-  private async prepareNamespaces(id: InputDescriptor, document: IssuerSignedDocument) {
-    const requestedFields = id.constraints.fields;
+  private async prepareNamespaces(id: InputDescriptor | DcqlQueryCredential, document: IssuerSignedDocument) {
+    // For InputDescriptor, use id.constraints.fields
+    // For DcqlQueryCredential, use id.claims (array of DcqlClaim)
+    let requestedFields;
+    if ('constraints' in id && id.constraints?.fields) {
+      requestedFields = id.constraints.fields;
+    } else if ('claims' in id && Array.isArray(id.claims)) {
+      requestedFields =  id.claims.map(claim => ({ path: claim.path, intent_to_retain: claim.intent_to_retain || false }));
+    }
     const nameSpaces: { [ns: string]: any } = {};
     for await (const field of requestedFields) {
       const result = await this.prepareDigest(field.path, document);
@@ -326,16 +380,26 @@ export class DeviceResponse {
     document: IssuerSignedDocument,
   ): Promise<{ nameSpace: string; digest: IssuerSignedItem } | null> {
     /**
-     * path looks like this: "$['org.iso.18013.5.1']['family_name']"
-     * the regex creates two groups with contents between "['" and "']"
-     * the second entry in each group contains the result without the "'[" or "']"
+     * Supports two formats:
+     * 1. ["$['org.iso.18013.5.1']['family_name']"]
+     * 2. ["org.iso.18013.5.1", "family_name"]
      */
     for (const path of paths) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const [[_1, nameSpace], [_2, elementIdentifier]] = [...path.matchAll(/\['(.*?)'\]/g)];
-      if (!nameSpace) throw new Error(`Failed to parse namespace from path "${path}"`);
-      if (!elementIdentifier) throw new Error(`Failed to parse elementIdentifier from path "${path}"`);
-
+      let nameSpace: string | undefined;
+      let elementIdentifier: string | undefined;
+      if (typeof path === 'string' && path.startsWith("$['")) {
+        // JSONPath string format
+        const matches = [...path.matchAll(/\['(.*?)'\]/g)];
+        nameSpace = matches[0]?.[1];
+        elementIdentifier = matches[1]?.[1];
+      } else if (Array.isArray(paths) && paths.length === 2 && paths.every(p => typeof p === 'string')) {
+        // Array format: [namespace, elementIdentifier]
+        nameSpace = paths[0];
+        elementIdentifier = paths[1];
+      }
+      if (!nameSpace || !elementIdentifier) {
+        throw new Error(`Failed to parse namespace/elementIdentifier from path "${JSON.stringify(path)}"`);
+      }
       const nsAttrs: IssuerSignedItem[] = document.issuerSigned.nameSpaces[nameSpace] || [];
       const digest = nsAttrs.find((d) => d.elementIdentifier === elementIdentifier);
 

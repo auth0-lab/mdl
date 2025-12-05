@@ -2,8 +2,9 @@ import * as jose from 'jose';
 import * as crypto from 'crypto';
 import fs from 'fs';
 import { Verifier, Document, MDoc, DeviceResponse } from '../../src/index';
+import { DcqlQuery } from '../../src/mdoc/model/DcqlQuery';
 
-describe('example 5: device response (using presentationDefinition) contains a partial x5chain of the issuer certificate', () => {
+describe('example 6: device response (using dcqlQuery) contains a partial x5chain of the issuer certificate', () => {
   it('issuer signature should be valid', async () => {
     const devicePrivatePEM = '-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIKWuHzvetdYpe5cErlOrU1bipA0OFtbBpJBdXCzRIVbz\n-----END PRIVATE KEY-----';
     const devicePrivateKey = await jose.exportJWK(crypto.createPrivateKey({ key: devicePrivatePEM }));
@@ -42,25 +43,26 @@ describe('example 5: device response (using presentationDefinition) contains a p
     });
 
     const issuerMDoc = new MDoc([signedDoc]).encode();
-    const presentationDefinition = {
-      id: 'family_name_only',
-      input_descriptors: [
-        {
-          id: 'org.iso.18013.5.1.mDL',
-          format: { mso_mdoc: { alg: ['EdDSA', 'ES256'] } },
-          constraints: {
-            limit_disclosure: 'required',
-            fields: [{
-              path: ["$['org.iso.18013.5.1']['family_name']"],
-              intent_to_retain: false,
-            }],
-          },
-        },
-      ],
-    };
+    const dcqlQuery: DcqlQuery = {
+			credentials: [
+				{
+					id: 'family_name_only',
+					format: 'mso_mdoc',
+					meta: {
+						doctype_value: 'org.iso.18013.5.1.mDL',
+					},
+					claims: [
+						{
+							path: ['org.iso.18013.5.1', 'family_name'],
+							intent_to_retain: false,
+						},
+					],
+				},
+			],
+		};
 
     const deviceResponseMDoc = await DeviceResponse.from(issuerMDoc)
-      .usingPresentationDefinition(presentationDefinition)
+      .usingDcqlQuery(dcqlQuery)
       .usingSessionTranscriptForOID4VP('', '', '', '')
       .authenticateWithSignature(devicePrivateKey, 'EdDSA')
       .sign();
