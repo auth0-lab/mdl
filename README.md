@@ -1,3 +1,12 @@
+# ⚠️ DEPRECATED
+This repository is no longer actively maintained. Development has moved to a new organization and project.
+
+**Please migrate to the new package for the latest features and bug fixes:**
+* **GitHub:** [animo/mdoc](https://github.com/animo/mdoc)
+* **NPM:** [@animo-id/mdoc](https://www.npmjs.com/package/@animo-id/mdoc)
+
+---
+
 [![npm version](https://badge.fury.io/js/@auth0%2Fmdl.svg)](https://badge.fury.io/js/@auth0%2Fmdl)
 
 # mDL
