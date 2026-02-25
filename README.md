@@ -2,8 +2,8 @@
 This repository is no longer actively maintained. Development has moved to a new organization and project.
 
 **Please migrate to the new package for the latest features and bug fixes:**
-* **GitHub:** [animo/mdoc](https://github.com/animo/mdoc)
-* **NPM:** [@animo-id/mdoc](https://www.npmjs.com/package/@animo-id/mdoc)
+* **GitHub:** [openwallet-foundation-labs/mdoc-ts](https://github.com/openwallet-foundation-labs/mdoc-ts)
+* **NPM:** [@animo-id/mdoc](https://www.npmjs.com/package/@owf/mdoc)
 
 ---
 
