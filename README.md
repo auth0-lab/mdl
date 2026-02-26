@@ -3,7 +3,7 @@ This repository is no longer actively maintained. Development has moved to a new
 
 **Please migrate to the new package for the latest features and bug fixes:**
 * **GitHub:** [openwallet-foundation-labs/mdoc-ts](https://github.com/openwallet-foundation-labs/mdoc-ts)
-* **NPM:** [@animo-id/mdoc](https://www.npmjs.com/package/@owf/mdoc)
+* **NPM:** [@owf/mdoc](https://www.npmjs.com/package/@owf/mdoc)
 
 ---
 
