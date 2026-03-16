@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import fs from 'fs';
 import { Verifier, Document, MDoc, DeviceResponse } from '../../src/index';
 
-describe('example 5: device response contains a partial x5chain of the issuer certificate', () => {
+describe('example 5: device response (using presentationDefinition) contains a partial x5chain of the issuer certificate', () => {
   it('issuer signature should be valid', async () => {
     const devicePrivatePEM = '-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIKWuHzvetdYpe5cErlOrU1bipA0OFtbBpJBdXCzRIVbz\n-----END PRIVATE KEY-----';
     const devicePrivateKey = await jose.exportJWK(crypto.createPrivateKey({ key: devicePrivatePEM }));

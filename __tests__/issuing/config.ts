@@ -127,3 +127,29 @@ export const PRESENTATION_DEFINITION_2 = {
     },
   ],
 };
+
+export const DCQL_QUERY = {
+  credentials: [
+    {
+      id: 'mdl-test-all-data-dcql',
+      format: 'mso_mdoc',
+      meta: {
+        doctype_value: 'org.iso.18013.5.1.mDL',
+      },
+      claims: [
+        { path: ["$['org.iso.18013.5.1']['family_name']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['given_name']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['birth_date']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['issue_date']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['expiry_date']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['issuing_country']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['issuing_authority']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['issuing_jurisdiction']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['document_number']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['portrait']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['driving_privileges']"], intent_to_retain: false },
+        { path: ["$['org.iso.18013.5.1']['un_distinguishing_sign']"], intent_to_retain: false },
+      ],
+    },
+  ],
+};
