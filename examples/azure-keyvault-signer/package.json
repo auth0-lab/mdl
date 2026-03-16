@@ -1,0 +1,33 @@
+{
+  "name": "@auth0/mdl-azure-keyvault-signer-example",
+  "version": "1.0.0",
+  "description": "Example implementation of Azure Key Vault signer for @auth0/mdl",
+  "private": true,
+  "main": "src/AzureKeyVaultSigner.ts",
+  "scripts": {
+    "test": "jest --testMatch='**/examples/azure-keyvault-signer/__tests__/**/*.tests.ts'"
+  },
+  "keywords": [
+    "auth0",
+    "mdl",
+    "azure",
+    "key-vault",
+    "hsm",
+    "signing",
+    "example"
+  ],
+  "author": {
+    "name": "AffinitiQuest",
+    "url": "https://affinitiquest.io"
+  },
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@auth0/mdl": "^1.5.0",
+    "@azure/identity": "^4.0.0",
+    "@azure/keyvault-keys": "^4.8.0"
+  },
+  "devDependencies": {
+    "@azure/identity": "^4.0.0",
+    "@azure/keyvault-keys": "^4.8.0"
+  }
+}

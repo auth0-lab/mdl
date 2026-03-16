@@ -1,0 +1,27 @@
+import { SupportedAlgs } from '../model/types';
+
+/**
+ * Interface for signing operations that can be implemented by various
+ * signing mechanisms (local keys, HSMs, KMS, etc.)
+ */
+export interface Signer {
+  /**
+   * Sign data using the configured signing mechanism.
+   * The algorithm is determined by the signer based on its key type.
+   * @param data - The data to sign
+   * @returns The signature as a Uint8Array
+   */
+  sign(data: Uint8Array): Promise<Uint8Array>;
+
+  /**
+   * Get the key ID for this signer
+   * @returns The key ID as a string, Uint8Array, or undefined
+   */
+  getKeyId(): string | Uint8Array | undefined;
+
+  /**
+   * Get the algorithm that this signer uses
+   * @returns The COSE algorithm identifier (e.g., 'ES256', 'ES384', 'ES512')
+   */
+  getAlgorithm(): SupportedAlgs;
+}
